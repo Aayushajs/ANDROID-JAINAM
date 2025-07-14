@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "BookX",
+    "slug": "BookX",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "description": "BookX is a mobile application that provides a wide range of educational resources, including courses, books, and chat features. The app is designed to help users learn and improve their knowledge in various subjects.",
+    "primaryColor": "#00000",
+    "backgroundColor": "#00000",
+    "userInterfaceStyle": "automatic",
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/icon2.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#00000"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon2.png",
+        "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_EXTERNAL_STORAGE"
+      ],
+        "backgroundColor": "#00000"
+      },
+      "package": "Bookx.com"
+    },
+    "web": {
+      "favicon": ""
+    },
+    "extra": {
+      "eas": {
+        "projectId": "053829a0-4c39-47fc-922a-090deaad77ef"
+      }
+    },
+    "owner": "aayush.ajs"
+  }
+}
