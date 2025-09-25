@@ -1,381 +1,237 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Dimensions, Animated, Image } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome'; // Import FontAwesome icons
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Animated, Easing, StatusBar, useColorScheme, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LottieView from 'lottie-react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
-// Get the screen width using Dimensions
-const { width: screenWidth } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-// Data for the carousel cards
-const carouselData = [
-  {
-    id: 1,
-    title: 'Effortless Control with Syncra',
-    description: '"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..."',
-    icon: 'home', // Icon name for FontAwesome
-  },
-  {
-    id: 2,
-    nestedCards: [
-      {
-        id: 2.1,
-        description: 'This is the first nested card.',
-        icon: 'home',
-      },
-      {
-        id: 2.2,
-        description: 'This is the second nested card.',
-        icon: 'user',
-      },
-      {
-        id: 2.3,
-        description: 'This is the third nested card.',
-        icon: 'home',
-      },
-      {
-        id: 2.4,
-        description: 'This is the fourth nested card.',
-        icon: 'user',
-      },
-    ],
-  },
-  {
-    id: 3,
-    description: '"Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit...""There is no one who loves pain itself, who seeks after it and wants to have it, simply because it is pain...""Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit..." " .',
-  },
-];
-
-// WelcomePage Component
 const WelcomePage = ({ navigation }) => {
-  // Reference for the FlatList to control scrolling
-  const flatListRef = useRef(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const bgColor = isDark ? '#181A20' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#181A20';
+  const subtitleColor = isDark ? 'rgba(255,255,255,0.7)' : 'rgba(24,26,32,0.7)';
+  const accentColor = isDark ? '#cf7393ff' : '#0e0e0eff';
 
-  // State to track the current active index of the carousel
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Animation values for the teacher and student buttons
-  const teacherButtonPosition = useRef(new Animated.Value(200)).current; // Starts from the right
-  const studentButtonPosition = useRef(new Animated.Value(-200)).current; // Starts from the left
-
-  // Animate buttons when the component mounts
   useEffect(() => {
-    // Animate the teacher button to its original position
-    Animated.timing(teacherButtonPosition, {
-      toValue: 0, // Move to the original position
-      duration: 800, // Animation duration
-      useNativeDriver: true, // Use native driver for better performance
-    }).start();
+    // Animation sequence
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 1200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      })
+    ]).start();
 
-    // Animate the student button to its original position
-    Animated.timing(studentButtonPosition, {
-      toValue: 0, // Move to the original position
-      duration: 800, // Animation duration
-      useNativeDriver: true, // Use native driver for better performance
-    }).start();
-  }, []);
-
-  // Append the first item to the end of the array to create an infinite loop
-  const infiniteCarouselData = [...carouselData, carouselData[0]];
-
-  // Automatically scroll the FlatList every 3.5 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // Calculate the next index
-      const nextIndex = (currentIndex + 1) % infiniteCarouselData.length;
-      setCurrentIndex(nextIndex);
-
-      // Scroll to the next index
-      flatListRef.current?.scrollToIndex({ animated: true, index: nextIndex });
-
-      // If it's the last item, reset to the first item without animation
-      if (nextIndex === infiniteCarouselData.length - 1) {
-        setTimeout(() => {
-          flatListRef.current?.scrollToIndex({ animated: false, index: 0 });
-          setCurrentIndex(0);
-        }, 300); // Delay to match the scroll animation duration
-      }
-    }, 3500); // Scroll interval (3.5 seconds)
-
-    // Cleanup the interval on component unmount
-    return () => clearInterval(interval);
-  }, [currentIndex]);
-
-  // Render each carousel item with custom styles
-  const renderCarouselItem = ({ item }) => {
-    let cardStyle, titleStyle, descriptionStyle;
-
-    // Apply different styles based on the card ID
-    switch (item.id) {
-      case 1:
-        cardStyle = { height: 300, backgroundColor: 'transparent', alignItems: 'center' };
-        titleStyle = { fontSize: 46, fontWeight: 'bold', color: '#e0e0e0', marginTop: "auto" };
-        descriptionStyle = { fontSize: 16, color: '#e0e0e0', marginTop: "auto" };
-        break;
-      case 2:
-        cardStyle = { height: 300, backgroundColor: 'transparent' };
-        titleStyle = { fontSize: 22, fontWeight: '600', color: '#FFF' };
-        descriptionStyle = { fontSize: 14, color: '#FFF' };
-        break;
-      case 3:
-        cardStyle = { height: 300, backgroundColor: 'transparent' };
-        descriptionStyle = {
-          fontSize: 18,
-          color: '#FFF',
-          marginBottom: "5",
-          marginTop: "-27%",
-          textAlign: 'center',
-          letterSpacing: 1,
-        };
-        break;
-      default:
-        cardStyle = {};
-        titleStyle = {};
-        descriptionStyle = {};
-    }
-
-    return (
-      <View style={[styles.carouselCard, cardStyle]}>
-        {/* Icon with Text for Card 1 */}
-        {item.id === 1 && (
-          <View style={styles.iconTextContainer}>
-            <Icon name={item.icon} style={styles.icon} size={16} color="#FFF" />
-            <Text style={styles.iconText}>AI Voice Command</Text>
-          </View>
-        )}
-        {/* Title */}
-        <Text style={[styles.carouselTitle, titleStyle]}>{item.title}</Text>
-        {/* Description */}
-        <Text style={[styles.carouselDescription, descriptionStyle]}>{item.description}</Text>
-        {/* Nested Cards for Card 2 */}
-        {item.id === 2 && (
-          <View style={styles.nestedCardsContainer}>
-            {item.nestedCards.map((nestedCard) => (
-              <View key={nestedCard.id} style={styles.nestedCard}>
-                <Icon name={nestedCard.icon} size={23} color="white" />
-                <Text style={styles.nestedCardDescription}>{nestedCard.description}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
+    // Pulse animation for the start button
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
     );
+
+    pulseLoop.start();
+
+    return () => {
+      pulseLoop.stop();
+    };
+
+  }, [fadeAnim, slideAnim, scaleAnim]);
+
+  const animatedContent = {
+    opacity: fadeAnim,
+    transform: [
+      { translateY: slideAnim },
+      { scale: scaleAnim }
+    ]
   };
 
   return (
-    <View style={styles.container}>
-      {/* Logo Image */}
-      <Image
-        source={{ uri: 'https://dev.screenapp.io/articles/content/images/size/w1000/2023/08/ScreenApp-7.png' }}
-        style={styles.logoImage}
-      />
+    <View style={[styles.container, { backgroundColor: bgColor, paddingTop: insets.top }] }>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={bgColor} translucent={Platform.OS === 'android'} />
 
-      {/* Background Image */}
-      <Image
-        source={{ uri: 'https://www.pixelstalk.net/wp-content/uploads/image12/Abstract-dark-smoke-patterns-twisting-and-intertwining-against-a-black-background-illuminated-by-faint-purple-and-teal-highlights.jpg' }}
-        style={styles.topImage}
-        resizeMode="cover"
-      />
+      {/* Content */}
+      <Animated.View style={[styles.content, animatedContent]}>
 
-      {/* Carousel */}
-      <FlatList
-        data={infiniteCarouselData}
-        ref={flatListRef}
-        renderItem={renderCarouselItem}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
-        horizontal={true}
-        pagingEnabled={true}
-        showsHorizontalScrollIndicator={false}
-        style={styles.carouselContainer}
-        contentContainerStyle={styles.carouselContentContainer}
-        onMomentumScrollEnd={(event) => {
-          const contentOffsetX = event.nativeEvent.contentOffset.x;
-          const newIndex = Math.round(contentOffsetX / screenWidth);
-
-          // Handle the last item (reset to the first item)
-          if (newIndex === infiniteCarouselData.length - 1) {
-            flatListRef.current?.scrollToIndex({ animated: false, index: 0 });
-            setCurrentIndex(0);
-          } else {
-            setCurrentIndex(newIndex);
-          }
-        }}
-      />
-
-      {/* Pagination Dots */}
-      <View style={styles.pagination}>
-        {carouselData.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.dot,
-              currentIndex === index && styles.activeDot,
-            ]}
-          />
-        ))}
-      </View>
-
-      {/* Buttons */}
-      <View style={styles.container}>
-        <View style={styles.content}>
-
-          {/* Student Button - Animated from Left */}
-          <TouchableOpacity style={styles.content} onPress={() => navigation.navigate("Start")}>
-            <Animated.View
-              style={[
-                styles.button,
-                { transform: [{ translateX: studentButtonPosition }] },
-              ]}
-            >
-              <Text style={styles.buttonText}>STUDENT</Text>
-            </Animated.View>
-          </TouchableOpacity>
+        {/* Lottie Animation */}
+        <View style={[styles.animationContainer, { backgroundColor: 'transparent' }]}>
+          <LottieView
+              source={require('../assets/animations/Delivery.json')}
+              style={[styles.animation, { backgroundColor: 'transparent' }]}
+              autoPlay
+              loop
+              key={isDark ? 'delivery-dark' : 'delivery-light'}
+              // In dark mode recolor the feather/gradient rectangle to match bg so it appears transparent
+              colorFilters={isDark ? [
+                { keypath: 'feather gradient', color: bgColor },
+                { keypath: 'Rectangle 1', color: bgColor }
+              ] : undefined}
+            />
         </View>
+
+        {/* Welcome Text */}
+        <View style={styles.textContainer}>
+          <Text style={[styles.title, { color: textColor }]}>Welcome to MediCare+</Text>
+          <Text style={[styles.subtitle, { color: subtitleColor }]}>Your health is our priority. Discover a seamless experience for all your healthcare needs.
+            Your health is our priority. Discover a seamless experience for all your healthcare needs.
+          </Text>
+        </View>
+  </Animated.View>
+
+      {/* Start Button */}
+      <Animated.View 
+        style={[
+          styles.buttonContainer,
+          {
+            transform: [{ scale: pulseAnim }]
+          }
+        ]}
+      >
+        <TouchableOpacity 
+          style={[styles.button, { backgroundColor: accentColor } ]}
+          onPress={() => navigation.navigate("Start")}
+          activeOpacity={0.9}
+        >
+          <View style={styles.buttonGradient}>
+            <Text style={styles.buttonText}>Start Shopping Now</Text>
+            <View style={[styles.iconContainer, { backgroundColor: isDark ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)' }]}> 
+              <Icon name="arrow-forward" size={20} color="#FFF" />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Footer */}
+      <View style={styles.footer}>
+        <Text style={[styles.footerText, { color: subtitleColor }]}>© 2023 MediCare+. All rights reserved</Text>
       </View>
     </View>
   );
 };
 
-// Styles for the component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    backgroundColor: '#0e0e0e',
-    padding: 0,
-    position: 'relative',
-    height: "90%",
-    zIndex: 0,
-  },
-  topImage: {
-    position: 'absolute',
-    top: 230,
-    left: '-50',
-    width: '130%',
-    height: 150,
-    zIndex: 0,
-    transform: [{ rotate: '-30deg' }],
-  },
-  logoImage: {
-    position: 'absolute',
-    top: 65,
-    left: '23%',
-    borderWidth: 1,
-    borderColor: 'rgb(11, 11, 11)',
-    borderRadius: 50,
-    width: "55%",
-    height: 40,
-    zIndex: 1,
-  },
-  carouselContainer: {
-    flexGrow: 0,
-    marginTop: 200,
-  },
-  carouselContentContainer: {
-    alignItems: 'center',
-  },
-  carouselCard: {
-    width: screenWidth * 0.9,
-    backgroundColor: '#fff',
-    padding: 20,
-    alignItems: 'center',
-    marginHorizontal: screenWidth * 0.05,
-    textAlign: 'center',
-  },
-  iconTextContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    borderRadius: 50,
-    width: "58%",
-    height: 30,
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(255, 252, 252, 0.5)',
-    borderWidth: 1,
-    textAlign: 'center',
-    justifyContent: 'center',
-  },
-  iconText: {
-    marginLeft: 5,
-    fontSize: 13,
-    color: 'rgb(255, 255, 255)',
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 15,
-  },
-  dot: {
-    width: 5,
-    height: 5,
-    borderRadius: 5,
-    backgroundColor: '#888',
-    marginHorizontal: 5,
-    marginRight: 15,
-  },
-  activeDot: {
-    backgroundColor: '#fff',
-    width: 7,
-    height: 7,
-  },
-  carouselTitle: {
-    fontSize: 46,
-    fontWeight: 'bold',
-    color: '#e0e0e0',
-    marginTop: "auto",
-    textAlign: 'center',
-  },
-  carouselDescription: {
-    fontSize: 16,
-    color: '#e0e0e0',
-    textAlign: 'center',
-  },
-  nestedCardsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    width: screenWidth * 0.9,
-    marginTop: "auto",
-    backgroundColor: 'transparent',
-  },
-  nestedCard: {
-    width: '48%',
-    backgroundColor: 'transparent',
-    borderColor: 'rgba(255, 252, 252, 0.5)',
-    borderWidth: 1,
-    height: 110,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nestedCardDescription: {
-    fontSize: 12,
-    color: 'white',
-    marginTop: 10,
+    paddingVertical: 40,
   },
   content: {
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 60,
     width: '100%',
+    paddingHorizontal: 20,
+  },
+ 
+  brandName: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#181A20',
+    letterSpacing: 1,
+    fontFamily: Platform.OS === 'android' ? 'serif' : 'System',
+  },
+  brandTagline: {
+    fontSize: 14,
+    color: 'rgba(24,26,32,0.7)',
+    marginTop: 4,
+    letterSpacing: 0.5,
+  },
+  animationContainer: {
+    width: width * 0.7,
+    height: width * 0.7,
+    marginBottom: 30,
+  },
+  animation: {
+    width: '100%',
+    height: '100%',
+  },
+  textContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#181A20',
+    textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'android' ? 'serif' : 'System',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(24,26,32,0.7)',
+    textAlign: 'center',
+    lineHeight: 24,
+    paddingHorizontal: 10,
+  },
+  buttonContainer: {
+    width: '100%',
+    paddingHorizontal: 40,
+    marginBottom: 30,
   },
   button: {
-    backgroundColor: 'transparent',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
     borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#1ABC9C',
-    marginBottom: 15,
-    width: '86%',
-    height: 48,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  buttonGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: 30,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginTop: -5,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  iconContainer: {
+    marginLeft: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  footer: {
+    paddingBottom: 20,
+  },
+  footerText: {
+    fontSize: 12,
+    color: 'rgba(24,26,32,0.5)',
   },
 });
 

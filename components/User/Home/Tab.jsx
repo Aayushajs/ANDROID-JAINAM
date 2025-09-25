@@ -1,240 +1,245 @@
-import React, { useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Dimensions, Text, Easing, Alert } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext'; // Import your AuthContext
+// Reusable BottomTabs Navigation Component
+import React, { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Platform, StatusBar } from "react-native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import Icon from "react-native-vector-icons/Ionicons";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation, useRoute, useNavigationState, useFocusEffect } from '@react-navigation/native';
 
-// Import your screens
-import HomePage from './Home';
+// Placeholder component for tab screens (will be replaced by navigation)
+const PlaceholderScreen = ({ route }) => null;
 
-const { width, height } = Dimensions.get('window');
 const Tab = createBottomTabNavigator();
-const TAB_BAR_HEIGHT = height * 0.12;
-const BUTTON_SIZE = width * 0.14;
-const ACTIVE_BUTTON_SIZE = width * 0.16;
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
-const HomeTabs = () => {
+export default function BottomTabs({ 
+  tabs = [
+    { name: "Search", screenName: "Search", icon: "search", iconOutline: "search-outline" },
+    { name: "Cart", screenName: "CartPage", icon: "cart", iconOutline: "cart-outline" },
+    { name: "Home", screenName: "HomeTabs", icon: "home", iconOutline: "home-outline" },
+    { name: "History", screenName: "HistoryPage", icon: "time", iconOutline: "time-outline" },
+    { name: "Settings", screenName: "SettingsPage", icon: "settings", iconOutline: "settings-outline" }
+  ],
+  currentActiveTab = "Home" // Default to Home tab being active, can be passed from parent
+}) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { logout } = useAuth(); // Get logout function from AuthContext
-  const animatedValues = useRef(tabs.map(() => new Animated.Value(0))).current;
-  const backgroundAnim = useRef(new Animated.Value(0)).current;
-
-  const handleTabPress = (index) => {
-    if (tabs[index].name === 'Logout') {
-      // Handle logout
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to logout?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          },
-          { 
-            text: 'Logout', 
-            onPress: async () => {
-              try {
-                await logout(); // Call the logout function from AuthContext
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Login' }], // Replace 'Login' with your actual login screen name
-                });
-              } catch (error) {
-                console.error('Logout error:', error);
-                Alert.alert('Error', 'Failed to logout. Please try again.');
-              }
-            } 
-          }
-        ]
-      );
-      return;
+  const [activeTab, setActiveTab] = useState(currentActiveTab);
+  
+  // Get the actual current screen name from navigation
+  const getCurrentScreenName = () => {
+    try {
+      const state = navigation.getState();
+      
+      // Get the current route from navigation state
+      const getCurrentRoute = (navState) => {
+        if (!navState || !navState.routes) {
+          return null;
+        }
+        
+        const currentRoute = navState.routes[navState.index];
+        
+        // If current route has nested state, go deeper
+        if (currentRoute.state) {
+          return getCurrentRoute(currentRoute.state);
+        }
+        
+        return currentRoute.name;
+      };
+      
+      return getCurrentRoute(state);
+    } catch (error) {
+      console.log('Navigation state error:', error);
+      return null;
     }
+  };
+  
+  // Sync active tab with current screen
+  useFocusEffect(
+    React.useCallback(() => {
+      const currentScreenName = getCurrentScreenName();
+      console.log('Current screen name:', currentScreenName);
+      
+      // Find the tab that matches the current screen
+      const matchingTab = tabs.find(tab => tab.screenName === currentScreenName);
+      if (matchingTab) {
+        console.log('Setting active tab to:', matchingTab.name);
+        setActiveTab(matchingTab.name);
+      }
+    }, [])
+  );
 
-    // Animate all buttons
-    animatedValues.forEach((value, i) => {
-      Animated.timing(value, {
-        toValue: i === index ? 1 : 0,
-        duration: 350,
-        easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
-      }).start();
-    });
+  // Calculate safe bottom height for Android navigation
+  const bottomSafeHeight = Platform.OS === 'android' 
+    ? Math.max(insets.bottom, 10) 
+    : insets.bottom;
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+            borderTopColor: isDark ? '#333333' : '#E5E5E5',
+            paddingBottom: bottomSafeHeight + (Platform.OS === 'android' ? 5 : 0),
+            height: Platform.OS === 'android' 
+              ? Math.max(screenHeight * 0.085, 70) + bottomSafeHeight
+              : Math.max(screenHeight * 0.09, 75) + bottomSafeHeight,
+          }
+        ],
+        tabBarIcon: ({ focused, color, size }) => {
+          const currentTab = tabs.find(tab => tab.name === route.name);
+          const iconName = focused ? currentTab?.icon : currentTab?.iconOutline;
+          
+          return <Icon name={iconName || 'circle'} size={Math.min(screenWidth * 0.055, 24)} color={color} />;
+        },
+        tabBarLabel: ({ focused }) => (
+          <Text
+            style={{
+              fontSize: Math.min(screenWidth * 0.028, 12),
+              color: focused 
+                ? (isDark ? "#FF6B6B" : "#E53935")
+                : (isDark ? "#CCCCCC" : "#666666"),
+              fontWeight: focused ? "600" : "400",
+              fontFamily: Platform.OS === 'android' ? 'Roboto' : 'System',
+            }}
+          >
+            {route.name}
+          </Text>
+        ),
+        tabBarActiveTintColor: isDark ? "#FF6B6B" : "#E53935",
+        tabBarInactiveTintColor: isDark ? "#CCCCCC" : "#666666",
+      })}
+      tabBar={(props) => <CustomTabBar {...props} tabs={tabs} navigation={navigation} activeTab={activeTab} setActiveTab={setActiveTab} />}
+    >
+      {tabs.map((tab) => (
+        <Tab.Screen 
+          key={tab.name} 
+          name={tab.name} 
+          component={PlaceholderScreen} 
+        />
+      ))}
+    </Tab.Navigator>
+  );
+}
 
-    // Background pulse animation
-    Animated.sequence([
-      Animated.timing(backgroundAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(backgroundAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
+// Custom Tab Bar Component that handles navigation without importing screens
+const CustomTabBar = ({ state, descriptors, navigation: tabNavigation, tabs, navigation, activeTab, setActiveTab }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const insets = useSafeAreaInsets();
+  
+  const bottomSafeHeight = Platform.OS === 'android' 
+    ? Math.max(insets.bottom, 10) 
+    : insets.bottom;
+
+  // Simple function to check if tab is active
+  const isTabActive = (tab) => {
+    return activeTab === tab.name;
   };
 
-  const bgScale = backgroundAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.05],
-  });
+  // Simple color scheme - Red for active, Gray for inactive
+  const getActiveColor = (isActive) => {
+    if (isActive) {
+      return "#E53935"; // Red color for active tab (same in light/dark)
+    }
+    return isDark ? "#CCCCCC" : "#666666"; // Gray for inactive
+  };
 
   return (
-    <View style={{ flex: 1 }}>
-      <Tab.Navigator
-        screenOptions={{
-          headerShown: false,
-          tabBarStyle: styles.tabBar,
-          tabBarShowLabel: false,
-        }}
-      >
-        {tabs.map((tab, index) => (
-          <Tab.Screen
-            key={tab.name}
-            name={tab.name}
-            component={tab.component || View} // Use View as fallback for logout
-            options={{
-              tabBarButton: (props) => (
-                <Animated.View style={{ transform: [{ scale: bgScale }] }}>
-                  <TabButton
-                    {...props}
-                    index={index}
-                    icon={tab.icon}
-                    label={tab.label}
-                    animatedValue={animatedValues[index]}
-                    onPress={() => handleTabPress(index)}
-                    isLogout={tab.name === 'Logout'}
-                  />
-                </Animated.View>
-              ),
-            }}
-          />
-        ))}
-      </Tab.Navigator>
+    <View style={[
+      styles.customTabBar,
+      {
+        backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+        borderTopColor: isDark ? '#333333' : '#E5E5E5',
+        paddingBottom: bottomSafeHeight + (Platform.OS === 'android' ? 5 : 0),
+        height: Platform.OS === 'android' 
+          ? Math.max(screenHeight * 0.085, 70) + bottomSafeHeight
+          : Math.max(screenHeight * 0.09, 75) + bottomSafeHeight,
+      }
+    ]}>
+      {state.routes.map((route, index) => {
+        const currentTab = tabs.find(tab => tab.name === route.name);
+        const isActive = isTabActive(currentTab);
+        
+        const onPress = () => {
+          // Set the active tab and navigate to the actual screen using screenName
+          setActiveTab(currentTab.name);
+          if (currentTab?.screenName) {
+            navigation.navigate(currentTab.screenName);
+          }
+        };
+
+        const iconName = isActive ? currentTab?.icon : currentTab?.iconOutline;
+        const activeColor = getActiveColor(isActive);
+
+        return (
+          <TouchableOpacity
+            key={route.name}
+            onPress={onPress}
+            style={styles.tabItem}
+            activeOpacity={0.7}
+          >
+            <Icon 
+              name={iconName || 'circle'} 
+              size={Math.min(screenWidth * 0.055, 24)} 
+              color={activeColor}
+            />
+            <Text
+              style={[
+                styles.tabLabel,
+                {
+                  color: activeColor,
+                  fontWeight: isActive ? "600" : "400",
+                }
+              ]}
+            >
+              {route.name}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
-};
+}
 
-const TabButton = ({ onPress, icon, label, animatedValue, isLogout }) => {
-  const scale = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.15],
-  });
 
-  const translateY = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -height * 0.02],
-  });
-
-  const opacity = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.8, 1],
-  });
-
-  const borderWidth = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 3],
-  });
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPress={onPress}
-      style={styles.tabButton}
-    >
-      <Animated.View style={[
-        styles.buttonContainer,
-        { 
-          transform: [{ scale }, { translateY }],
-          opacity,
-          borderWidth,
-          borderColor: isLogout ? '#FF3B30' : '#FFF',
-        }
-      ]}>
-        <LinearGradient
-          colors={isLogout ? ['#FF3B30', '#C62828'] : ['#4A90E2', '#1E3C72']}
-          style={styles.buttonGradient}
-          start={{ x: 0.7, y: 0 }}
-          end={{ x: 0.3, y: 1 }}
-        >
-          <Icon name={icon} size={width * 0.06} color="#FFF" />
-        </LinearGradient>
-      </Animated.View>
-      <Animated.Text style={[
-        styles.label,
-        { 
-          opacity,
-          transform: [{ translateY }],
-          color: isLogout ? '#FF3B30' : '#FFF',
-        }
-      ]}>
-        {label}
-      </Animated.Text>
-    </TouchableOpacity>
-  );
-};
-
-const tabs = [
-  { name: 'Home', component: HomePage, icon: 'home-sharp', label: 'Home' },
-  { name: 'Logout', icon: 'log-out-outline', label: 'Logout' },
-];
 
 const styles = StyleSheet.create({
-  tabBar: {
-    position: 'absolute',
-    bottom: height * 0.0,
-    left: width * 0.05,
-    right: width * 0.05,
-    height: TAB_BAR_HEIGHT,
-    backgroundColor: '#0A0A0A',
-    borderRadius: 25,
+  customTabBar: {
     flexDirection: 'row',
+    paddingTop: Math.max(screenHeight * 0.012, 10),
+    paddingHorizontal: screenWidth * 0.02,
+    borderTopWidth: 1,
+    elevation: Platform.OS === 'android' ? 8 : 0,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingHorizontal: width * 0.02,
-    elevation: 15,
-    shadowColor: '#1E90FF',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 15,
-    borderWidth: 1,
-    borderColor: '#1E1E1E',
   },
-  tabButton: {
+  tabItem: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    height: '100%',
-  },
-  buttonContainer: {
-    width: ACTIVE_BUTTON_SIZE,
-    height: ACTIVE_BUTTON_SIZE,
-    borderRadius: ACTIVE_BUTTON_SIZE / 2,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderColor: '#FFF',
-    backgroundColor: '#0A0A0A',
+    paddingVertical: screenHeight * 0.01,
+    paddingHorizontal: screenWidth * 0.01,
   },
-  buttonGradient: {
-    width: BUTTON_SIZE,
-    height: BUTTON_SIZE,
-    borderRadius: BUTTON_SIZE / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  label: {
-    marginTop: height * 0.005,
-    fontSize: width * 0.03,
-    color: '#FFF',
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(30, 144, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+  tabLabel: {
+    fontSize: Math.min(screenWidth * 0.028, 12),
+    fontFamily: Platform.OS === 'android' ? 'Roboto' : 'System',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });
-
-export default HomeTabs;

@@ -38,3 +38,4 @@ yarn-error.*
 
 #npm i 
 # npx create-expo-app@latest --template blank
+.early.coverage

@@ -1,49 +1,77 @@
 {
   "expo": {
-    "name": "BookX",
-    "slug": "BookX",
-    "version": "1.0.1",
-    "orientation": "portrait",
-    "description": "BookX is a mobile application that provides a wide range of educational resources, including courses, books, and chat features. The app is designed to help users learn and improve their knowledge in various subjects.",
-    "primaryColor": "#00000",
-    "backgroundColor": "#00000",
-    "userInterfaceStyle": "automatic",
+    "name": "E-Pharmacy",
+    "slug": "E-Pharmacy",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "version": "1.2.0",
     "updates": {
+      "url": "https://u.expo.dev/9096ee65-922d-487f-9717-475dc87fe571",
       "fallbackToCacheTimeout": 0
+    },
+    "newArchEnabled": true,
+    "orientation": "portrait",
+    "description": "E-Pharmacy is a modern mobile application that allows users to order medicines online, upload prescriptions, track orders, and access verified healthcare resources in one place.",
+    "icon": "./assets/icon1.png",
+    "scheme": "epharmacy",
+    "userInterfaceStyle": "automatic",
+    "primaryColor": "#FFFFFF",
+    "backgroundColor": "#FFFFFF",
+    "splash": {
+      "image": "./assets/icon1.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/icon2.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#00000"
-    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.epharmacy.app",
+      "splash": {
+        "image": "./assets/icon1.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app requires access to the camera for scanning prescriptions and uploading documents.",
+        "NSPhotoLibraryUsageDescription": "This app requires access to photos to upload prescriptions."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/icon2.png",
-        "permissions": [
+        "foregroundImage": "./assets/icon1.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "splash": {
+        "image": "./assets/icon1.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
         "WRITE_EXTERNAL_STORAGE",
         "READ_EXTERNAL_STORAGE"
       ],
-        "backgroundColor": "#00000"
-      },
-      "package": "Bookx.com"
+      "package": "com.epharmacy.app",
+      "versionCode": 1
     },
     "web": {
-      "favicon": ""
+      "favicon": "./assets/icon1.png",
+      "themeColor": "#FFFFFF",
+      "backgroundColor": "#FFFFFF"
     },
     "extra": {
       "eas": {
-        "projectId": "053829a0-4c39-47fc-922a-090deaad77ef"
+        "projectId": "9096ee65-922d-487f-9717-475dc87fe571"
       }
     },
-    "owner": "aayush.ajs"
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }
