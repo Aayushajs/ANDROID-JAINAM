@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import { useContext, useState } from 'react';
+import { CartContext } from './CartContext';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -7,10 +9,9 @@ import {
   Dimensions,
   TouchableOpacity,
   FlatList,
-  SafeAreaView,
   ScrollView,
   Animated,
-  Platform,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
@@ -19,6 +20,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 const { width: screenWidth } = Dimensions.get('window');
 
 const ProductDetail = ({ navigation, route }) => {
+  const { addToCart } = useContext(CartContext);
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -106,6 +108,22 @@ const ProductDetail = ({ navigation, route }) => {
   const imageRef = useRef(null);
   const [selectedUnit, setSelectedUnit] = useState(product.units[0]);
   const [quantity, setQuantity] = useState(1);
+  const [showShareOptions, setShowShareOptions] = useState(false);
+
+  const shareOptions = [
+    { id: 'whatsapp', name: 'WhatsApp', icon: 'logo-whatsapp', color: '#25D366' },
+    { id: 'facebook', name: 'Facebook', icon: 'logo-facebook', color: '#1877F2' },
+    { id: 'instagram', name: 'Instagram', icon: 'logo-instagram', color: '#E4405F' },
+  ];
+
+  const handleShare = (platform) => {
+    setShowShareOptions(false);
+    // Here you would implement actual sharing functionality
+    console.log(`Sharing product on ${platform}`);
+    // For real implementation, you would use libraries like:
+    // react-native-share for general sharing
+    // react-native-share-social for specific platform sharing
+  };
 
   const renderImage = ({ item }) => (
     <View style={styles.imageContainer}>
@@ -211,8 +229,7 @@ const ProductDetail = ({ navigation, route }) => {
     </TouchableOpacity>
   );
 
-  const incrementQuantity = () => setQuantity(prev => prev + 1);
-  const decrementQuantity = () => setQuantity(prev => Math.max(1, prev - 1));
+ 
 
   return (
     <View style={[styles.safe, { backgroundColor: isDark ? '#0B0B0B' : '#F8F9FA' }]}>
@@ -318,7 +335,7 @@ const ProductDetail = ({ navigation, route }) => {
               <Text style={[styles.sectionTitle, { color: isDark ? '#fff' : '#222' }]}>Key Benefits</Text>
               <TouchableOpacity
                 style={[styles.shareIconBorder, { borderColor: isDark ? '#FF69B4' : '#000' }]}
-                onPress={() => {}}
+                onPress={() => setShowShareOptions(true)}
               >
                 <Icon name="share-social" size={16} color={isDark ? '#FF69B4' : '#000'} />
               </TouchableOpacity>
@@ -348,8 +365,6 @@ const ProductDetail = ({ navigation, route }) => {
               {product.units.map(renderUnit)}
             </ScrollView>
           </View>
-
-         
 
           {/* Description */}
           <View style={styles.section}>
@@ -400,6 +415,43 @@ const ProductDetail = ({ navigation, route }) => {
         )}
       </ScrollView>
 
+      {/* Share Options Modal */}
+      <Modal
+        visible={showShareOptions}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowShareOptions(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowShareOptions(false)}
+        >
+          <View style={[styles.shareOptionsContainer, { 
+            backgroundColor: isDark ? '#1A1A1A' : '#fff',
+          }]}>
+            <View style={styles.shareOptionsContent}>
+              {shareOptions.map((option, index) => (
+                <TouchableOpacity
+                  key={option.id}
+                  style={[
+                    styles.shareOption,
+                    index < shareOptions.length - 1 && styles.shareOptionBorder,
+                    { borderBottomColor: isDark ? '#333' : '#eee' }
+                  ]}
+                  onPress={() => handleShare(option.id)}
+                >
+                  <Icon name={option.icon} size={24} color={option.color} />
+                  <Text style={[styles.shareOptionText, { color: isDark ? '#fff' : '#222' }]}>
+                    {option.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
       {/* Fixed bottom action bar */}
       <View style={[styles.actionBar, { 
         backgroundColor: isDark ? '#1A1A1A' : '#fff',
@@ -415,7 +467,10 @@ const ProductDetail = ({ navigation, route }) => {
         <View style={styles.actionButtons}>
           <TouchableOpacity 
             style={[styles.addToCartBtn, { backgroundColor: isDark ? '#333' : '#f1f3f5' }]}
-            onPress={() => {}}
+            onPress={() => {
+              addToCart(product, selectedUnit, quantity);
+              navigation.navigate('CheckoutPage');
+            }}
           >
             <Icon name="cart" size={18} color={isDark ? '#fff' : '#222'} />
             <Text style={[styles.addToCartText, { color: isDark ? '#fff' : '#222' }] }>
@@ -484,7 +539,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 10,
-   
   },
   image: {
     width: "100%",
@@ -630,25 +684,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  quantitySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 10,
-    padding: 4,
-    width: 120,
-  },
-  quantityBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quantityText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
   description: {
     fontSize: 15,
     lineHeight: 22,
@@ -783,12 +818,55 @@ const styles = StyleSheet.create({
     backgroundColor: '#40C057',
     justifyContent: 'center',
     alignItems: 'center',
-    // subtle shadow
     elevation: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
+  },
+  // Share Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  shareOptionsContainer: {
+    width: '80%',
+    borderRadius: 10,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  shareOptionsContent: {
+    padding: 0,
+  },
+  shareOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  shareOptionBorder: {
+    borderBottomWidth: 1,
+  },
+  shareOptionText: {
+    fontSize: 16,
+    marginLeft: 12,
+    fontWeight: '600',
+  },
+  cancelButton: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

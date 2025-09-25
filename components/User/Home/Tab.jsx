@@ -15,7 +15,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 export default function BottomTabs({ 
   tabs = [
     { name: "Search", screenName: "Search", icon: "search", iconOutline: "search-outline" },
-    { name: "Cart", screenName: "CartPage", icon: "cart", iconOutline: "cart-outline" },
+    { name: "Cart", screenName: "CheckoutPage", icon: "cart", iconOutline: "cart-outline" },
     { name: "Home", screenName: "HomeTabs", icon: "home", iconOutline: "home-outline" },
     { name: "History", screenName: "HistoryPage", icon: "time", iconOutline: "time-outline" },
     { name: "Settings", screenName: "SettingsPage", icon: "settings", iconOutline: "settings-outline" }

@@ -215,6 +215,7 @@ const HeroSection = ({ navigation }) => {
           name="search-outline" 
           size={getResponsiveSize(20)} 
           color={colors.textSecondary} 
+          style={{ marginLeft: getResponsiveSize(9) }}
         />
         <TouchableOpacity
           activeOpacity={0.8}
@@ -233,7 +234,9 @@ const HeroSection = ({ navigation }) => {
             marginTop: Platform.OS === 'android' ? getResponsiveSize(12) : 0,
           }]} numberOfLines={1}>{placeholders[currentPlaceholder]}</Text>
         </TouchableOpacity>
-        <TouchableOpacity>
+      </View>
+      <View style={{ position: 'absolute', right: getResponsiveSize(-9), top: Platform.OS === 'android' ? getResponsiveSize(12) : getResponsiveSize(12), backgroundColor: colors.iconButton, padding: getResponsiveSize(12), borderRadius: getResponsiveSize(35) }}>
+       <TouchableOpacity>
           <Icon 
             name="mic-outline" 
             size={getResponsiveSize(20)} 
@@ -241,6 +244,7 @@ const HeroSection = ({ navigation }) => {
           />
         </TouchableOpacity>
       </View>
+        
 
       {/* Featured Title + Sort/Filter */}
       <View style={styles.featuredRow}>
@@ -420,13 +424,14 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: screenWidth * 0.03, // 3% of screen width
-    paddingHorizontal: screenWidth * 0.025, // 2.5% of screen width
-    marginBottom: screenHeight * 0.02, // 2% of screen height
+    borderRadius: screenWidth * 0.09, // 3% of screen width
+    paddingHorizontal: screenWidth * 0.020, // 2.5% of screen width
+    marginBottom: screenHeight * 0.01, // 2% of screen height
+    marginRight: screenWidth * 0.1,
     // Android Material Design shadow
     ...Platform.select({
       android: {
-        elevation: 2,
+        elevation: 2, 
       },
       ios: {
         shadowColor: '#000',
