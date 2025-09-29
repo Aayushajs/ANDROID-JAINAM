@@ -16,6 +16,8 @@ import ForgetPasswordScreen from './components/User/Authntiocation/ForgetPasswor
 import ProfilePage from './components/User/pages/ProfilePage.jsx';
 import SearchScreen from './components/User/pages/SearchScreen.jsx';
 import ProductDetail from './components/User/pages/ProductDetail.jsx';
+import ShoppingBagScreen from './components/User/pages/ShoppingBagScreen.jsx'
+import PaymentScreen from './components/User/pages/PaymentScreen.jsx'
 
 const Stack = createStackNavigator();
 
@@ -31,6 +33,8 @@ const AppNavigator = () => {
           <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProductDetail" component={ProductDetail} options={{ headerShown: false }} />
           <Stack.Screen name="CheckoutPage" component={CheckoutPage} options={{ headerShown: false }} />
+          <Stack.Screen name='ShoppingBagScreen' component={ShoppingBagScreen} options={{headerShown: false}} />
+          <Stack.Screen name='PaymentScreen' component={PaymentScreen} options={{headerShown:false}}/>
         </>
       ) : (
         <>
