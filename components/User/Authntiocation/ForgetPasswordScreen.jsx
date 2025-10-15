@@ -17,11 +17,13 @@ import {
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { forgotPassword, verifyOtp, resetPassword } from '../../../Apis/ApiSlashing';
 
 // Get screen dimensions for responsive design
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -30,6 +32,11 @@ const ForgetPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
   const [showOtpSection, setShowOtpSection] = useState(false);
+  const [showResetSection, setShowResetSection] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -123,6 +130,10 @@ const ForgetPasswordScreen = ({ navigation }) => {
   
 
   const handleEmailSubmit = async () => {
+    // Clear previous errors
+    setError('');
+
+    // Validate email
     if (!email) {
       setError('Please enter your email address');
       return;
@@ -134,16 +145,33 @@ const ForgetPasswordScreen = ({ navigation }) => {
       return;
     }
 
-    setLoading(true);
-    setError('');
-    
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      setLoading(true);
+      
+      // Call forgotPassword API
+      const result = await forgotPassword({ email });
+
+      console.log("Forgot password result:", result);
+
+      if (result && result.success) {
+        // Show OTP section
+        setShowOtpSection(true);
+        setTimer(60);
+        setCanResend(false);
+        Alert.alert(
+          "Success",
+          "OTP sent successfully! Please check your email.",
+          [{ text: "OK" }]
+        );
+      } else {
+        setError(result?.message || "Failed to send OTP. Please try again.");
+      }
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
       setLoading(false);
-      setShowOtpSection(true);
-      setTimer(60);
-      setCanResend(false);
-    }, 2000);
+    }
   };
 
   const handleOtpChange = (text, index) => {
@@ -169,33 +197,114 @@ const ForgetPasswordScreen = ({ navigation }) => {
   };
 
   const handleOtpVerify = async () => {
+    // Clear previous errors
+    setError('');
+
     const otpString = otp.join('');
     if (otpString.length !== 4) {
       setError('Please enter complete OTP');
       return;
     }
 
-    setLoading(true);
-    setError('');
+    try {
+      setLoading(true);
+      
+      // Call verifyOtp API
+      const result = await verifyOtp({ otp: otpString });
 
-    // Simulate OTP verification
-    setTimeout(() => {
+      console.log("Verify OTP result:", result);
+
+      if (result && result.success) {
+        // Show reset password section
+        setShowOtpSection(false);
+        setShowResetSection(true);
+        Alert.alert(
+          "Success",
+          "OTP verified successfully! Please set your new password.",
+          [{ text: "OK" }]
+        );
+      } else {
+        setError(result?.message || "Invalid OTP. Please try again.");
+      }
+    } catch (err) {
+      console.error("Verify OTP error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
       setLoading(false);
-      // Navigate to reset password screen or show success
-      navigation.navigate('ResetPassword', { email });
-    }, 2000);
+    }
   };
 
-  const handleResendOtp = () => {
+  const handleResendOtp = async () => {
     if (!canResend) return;
     
-    setTimer(60);
-    setCanResend(false);
-    setOtp(['', '', '', '']);
+    try {
+      setError('');
+      
+      // Call forgotPassword API again to resend OTP
+      const result = await forgotPassword({ email });
+
+      if (result && result.success) {
+        setTimer(60);
+        setCanResend(false);
+        setOtp(['', '', '', '']);
+        Alert.alert("Success", "OTP resent successfully!", [{ text: "OK" }]);
+      } else {
+        setError(result?.message || "Failed to resend OTP. Please try again.");
+      }
+    } catch (err) {
+      console.error("Resend OTP error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    }
+  };
+
+  const handleResetPassword = async () => {
+    // Clear previous errors
     setError('');
-    
-    // Simulate resend API call
-    // In real app, make API call here
+
+    // Validate passwords
+    if (!newPassword || !confirmPassword) {
+      setError('Please enter both password fields');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Call resetPassword API
+      const result = await resetPassword({ password: newPassword });
+
+      console.log("Reset password result:", result);
+
+      if (result && result.success) {
+        Alert.alert(
+          "Success",
+          "Password reset successfully! Please login with your new password.",
+          [
+            {
+              text: "OK",
+              onPress: () => navigation.navigate('SignIn')
+            }
+          ]
+        );
+      } else {
+        setError(result?.message || "Failed to reset password. Please try again.");
+      }
+    } catch (err) {
+      console.error("Reset password error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -274,7 +383,7 @@ const ForgetPasswordScreen = ({ navigation }) => {
             bounces={false}
           >
         <View style={[styles.content, keyboardVisible && styles.contentKeyboard, { backgroundColor: isDark ? 'transparent' : 'rgba(255,255,255,0.02)' }]}>
-          {!showOtpSection ? (
+          {!showOtpSection && !showResetSection ? (
             <>
               <Text style={[styles.title, { color: textColor }]}>Forgot Password?</Text>
               <Text style={[styles.subtitle, { color: subtitleColor }]}>Enter your email address to receive a verification code</Text>
@@ -328,7 +437,7 @@ const ForgetPasswordScreen = ({ navigation }) => {
 
               </TouchableOpacity>
             </>
-          ) : (
+          ) : showOtpSection ? (
             <>
               <Text style={[styles.title, { color: textColor }]}>Verify Your Email</Text>
               <Text style={styles.subtitle}>
@@ -389,7 +498,97 @@ const ForgetPasswordScreen = ({ navigation }) => {
                 {canResend ? (<TouchableOpacity onPress={handleResendOtp}><Text style={[styles.resendLink, { color: outo }]}>Resend Code</Text></TouchableOpacity>) : (<Text style={[styles.timerText, { color: subtitleColor }]}>Resend in {timer}s</Text>)}
               </View>
             </>
-          )}
+          ) : showResetSection ? (
+            <>
+              <Text style={[styles.title, { color: textColor }]}>Reset Password</Text>
+              <Text style={[styles.subtitle, { color: subtitleColor }]}>Enter your new password below</Text>
+
+              <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
+                <MaterialCommunityIcons
+                  name="lock-outline"
+                  size={24}
+                  color={subtitleColor}
+                  style={styles.icon}
+                />
+                <TextInput
+                  placeholder="New Password"
+                  placeholderTextColor={isDark ? 'rgba(223, 219, 219, 1)' : '#262424ff'}
+                  style={[styles.input, { color: isDark ? '#F8FAFC' : '#262424ff' }]}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry={!showNewPassword}
+                  returnKeyType="next"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowNewPassword(!showNewPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <MaterialCommunityIcons
+                    name={showNewPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={subtitleColor}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
+                <MaterialCommunityIcons
+                  name="lock-check-outline"
+                  size={24}
+                  color={subtitleColor}
+                  style={styles.icon}
+                />
+                <TextInput
+                  placeholder="Confirm Password"
+                  placeholderTextColor={isDark ? 'rgba(223, 219, 219, 1)' : '#262424ff'}
+                  style={[styles.input, { color: isDark ? '#F8FAFC' : '#262424ff' }]}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry={!showConfirmPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={handleResetPassword}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <MaterialCommunityIcons
+                    name={showConfirmPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={subtitleColor}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {error && <Text style={[styles.errorText, { backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }]}>{error}</Text>}
+
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handleResetPassword}
+                disabled={loading}
+              >
+                <LinearGradient
+                  colors={[accentColor, accentColor]}
+                  style={[styles.buttonInner, { paddingVertical: 14, borderRadius: 12, width: '100%' }]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <View style={styles.buttonContent}>
+                      <MaterialCommunityIcons
+                        name="check-circle"
+                        size={18}
+                        color="#FFF"
+                      />
+                      <Text style={styles.buttonText}>Reset Password</Text>
+                    </View>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          ) : null}
 
           <TouchableOpacity
             style={styles.footer}
@@ -547,6 +746,9 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: screenHeight * 0.02,
     fontSize: screenWidth * 0.04,
+  },
+  eyeIcon: {
+    padding: screenWidth * 0.02,
   },
   otpContainer: {
        flexDirection: 'row',

@@ -16,7 +16,9 @@ import axios from 'axios';
 const handleResponse = (res) => {
     if (!res || !res.data) {
         console.warn("Empty response from API");
-        return { success: false, status: res?.status || 500, message: "No data received" };
+        // return { success: false, status: res?.status || 500, message: "No data received" };
+        setError("No data received from server");
+        return;
     }
 
     console.log("Response data : ", res.data);
@@ -26,11 +28,14 @@ const handleResponse = (res) => {
 const handleError = (error) => {
     console.error("❌ API Error:", error.response?.data || error.message);
 
-    return {
-        success: false,
-        status: error.response?.status || 0,
-        message: error.response?.data?.message || error.message || "Network error",
-    };
+    // return {
+    //     success: false,
+    //     status: error.response?.status || 0,
+    //     message: error.response?.data?.message || error.message || "Network error",
+    // };
+
+    setError(error.response?.data?.message || error.message || "Network error");
+    return;
 }
 
 
@@ -97,7 +102,7 @@ export const forgotPassword = async ({ email }) => {
             { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
         )
         console.log("response via forgotPassword : ", res)
-        
+
         return handleResponse(res);
     } catch (error) {
         return handleError(error);
@@ -119,7 +124,7 @@ export const verifyOtp = async ({ otp }) => {
     }
 }
 
-export const resetPassword = async ({ password}) =>{
+export const resetPassword = async ({ password }) => {
     try {
         const res = await axios.post(
             ResetPassword,
