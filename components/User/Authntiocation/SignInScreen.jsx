@@ -16,6 +16,7 @@ import {
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons";
@@ -23,16 +24,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
 import { useAuth } from "../../context/AuthContext";
 import LottieView from 'lottie-react-native';
+import { loginUser } from "../../../Apis/ApiSlashing";
 
 // Get screen dimensions for responsive design
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 const SignInScreen = ({ navigation }) => {
-  const { login, loading, error } = useAuth();
+  const { login: authLogin } = useAuth();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [keyboardVisible, setKeyboardVisible] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
   const particleAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef(null);
   const insets = useSafeAreaInsets();
@@ -133,10 +137,45 @@ const SignInScreen = ({ navigation }) => {
     }));
 
   const handleSubmit = async () => {
+
+    setError("");
+
     if (!email || !password) {
+      setError("Email and password are required");
       return;
     }
-    await login(email, password);
+
+    // Password validation
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Call loginUser API from ApiSlashing.js
+      const result = await loginUser({
+        email: email,
+        password: password
+      });
+
+      // console.log("Login result:", result);
+
+      if (result.success) {
+        if (authLogin && result.data) {
+          await authLogin(result.data);
+        }
+
+      } else {
+        setError(result.message || "Login failed. Please check your credentials.");
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

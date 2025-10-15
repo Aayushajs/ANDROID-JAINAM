@@ -14,25 +14,35 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkToken = async () => {
       try {
-        const token = await AsyncStorage.getItem('jwtToken');
-        if (token) {
-          setIsAuthenticated(true); // Token found, user is authenticated
+        const storedData = await AsyncStorage.getItem('jwtToken');
+        if (storedData) {
+          const parsedData = JSON.parse(storedData); // ✅ convert string → object
+          console.log("Token:", parsedData.token);
+          console.log("User:", parsedData.user);
+
+          if (parsedData.token) {
+            setIsAuthenticated(true); // ✅ valid token, mark user authenticated
+          } else {
+            setIsAuthenticated(false);
+          }
+        } else {
+          setIsAuthenticated(false); // ✅ nothing stored
         }
       } catch (error) {
         console.error('Error checking token:', error);
+        setIsAuthenticated(false);
       } finally {
-        setIsLoading(false); // Loading complete
+        setIsLoading(false); // ✅ done loading
       }
     };
+
 
     checkToken();
   }, []);
 
-  const login = async (token) => {
+  const login = async (data) => {
     try {
-      await AsyncStorage.setItem('jwtToken', token); // Store token in AsyncStorage
-      
-      
+      await AsyncStorage.setItem('jwtToken', JSON.stringify(data)); // store token+user
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Error storing token or user details:', error);
@@ -42,7 +52,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('jwtToken'); // Remove token from AsyncStorage
-      
+
       setIsAuthenticated(false);
     } catch (error) {
       console.error('Error removing token or user details:', error);
