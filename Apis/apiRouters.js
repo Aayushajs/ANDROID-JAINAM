@@ -3,6 +3,7 @@ import {API_BASE_URL} from './api.js';
 //Authentication Routes
 export const Signup = `${API_BASE_URL}/api/v1/users/signup`
 export const Login = `${API_BASE_URL}/api/v1/users/login`
+console.log("Login URL : ", Login)
 export const Logout = `${API_BASE_URL}/api/v1/users/logout`
 export const ForgotPassword = `${API_BASE_URL}/api/v1/users/forgot-password`
 export const VerifyOtp = `${API_BASE_URL}/api/v1/users/verify-otp`

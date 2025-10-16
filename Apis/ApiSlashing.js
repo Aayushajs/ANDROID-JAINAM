@@ -12,13 +12,10 @@ import axios from 'axios';
 
 
 
-
 const handleResponse = (res) => {
     if (!res || !res.data) {
         console.warn("Empty response from API");
-        // return { success: false, status: res?.status || 500, message: "No data received" };
-        setError("No data received from server");
-        return;
+        return { success: false, status: res?.status || 500, message: "No data received from server" };
     }
 
     console.log("Response data : ", res.data);
@@ -28,14 +25,11 @@ const handleResponse = (res) => {
 const handleError = (error) => {
     console.error("❌ API Error:", error.response?.data || error.message);
 
-    // return {
-    //     success: false,
-    //     status: error.response?.status || 0,
-    //     message: error.response?.data?.message || error.message || "Network error",
-    // };
-
-    setError(error.response?.data?.message || error.message || "Network error");
-    return;
+    return {
+        success: false,
+        status: error.response?.status || 0,
+        message: error.response?.data?.message || error.message || "Network error",
+    };
 }
 
 
