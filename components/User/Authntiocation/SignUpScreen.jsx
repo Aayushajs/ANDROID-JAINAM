@@ -23,18 +23,23 @@ import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityI
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "react-native";
 import { useAuth } from "../../context/AuthContext";
+import { signupUser } from "../../../Apis/ApiSlashing";
+
+
 
 // Get screen dimensions for responsive design
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const SignUpScreen = ({ navigation }) => {
-  const { register, loading, error } = useAuth();
+  const { register } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const particleAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef(null);
   const insets = useSafeAreaInsets();
@@ -122,17 +127,50 @@ const SignUpScreen = ({ navigation }) => {
     animateLogo();
   }, []);
 
-  
 
- 
+const handleSubmit = async () => {
+  setError("");
 
-  const handleSubmit = async () => {
-    if (!email || !password || !fullName || !phoneNumber) {
-      return;
+  if (!fullName || !email || !phoneNumber || !password) {
+    setError("All fields are required");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const payload = {
+      name: fullName,
+      email: email,
+      password: password,
+      phone: phoneNumber,
+    };
+
+    const result = await signupUser(payload);
+
+    console.log("Signup result:", result);
+
+    if (result.success) {
+      Alert.alert(
+        "Success",
+        "Account created successfully! Please sign in.",
+        [
+          {
+            text: "OK",
+            onPress: () => navigation.navigate("SignIn")
+          }
+        ]
+      );
+    } else {
+      setError(result.message || "Signup failed. Please try again.");
     }
-
-    await register(fullName, email, phoneNumber, password);
-  };
+  } catch (err) {
+    console.error("Signup error:", err);
+    setError("An unexpected error occurred. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
@@ -142,228 +180,228 @@ const SignUpScreen = ({ navigation }) => {
         style={styles.container}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -200}
       >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <LinearGradient
-          colors={isDark ? [bgColor, '#0F172A'] : [bgColor, '#F8FAFC']}
-          style={[styles.background, { paddingTop: insets.top }]}
-        >
-      
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <LinearGradient
+            colors={isDark ? [bgColor, '#0F172A'] : [bgColor, '#F8FAFC']}
+            style={[styles.background, { paddingTop: insets.top }]}
+          >
 
-        {/* Header with Logo and Text - Hide when keyboard is visible */}
-        {!keyboardVisible && (
-          <View style={[styles.header, { left: 12, top: Math.max(16, screenHeight * 0.07) }]}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              accessibilityLabel="Go back"
-              style={{ marginRight: 8, padding: 6 }}
-            >
-              <MaterialCommunityIcons name="arrow-left" size={24} color={textColor} />
-            </TouchableOpacity>
-            <Image
-              source={{ uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQumTE4MdxmvhSlr5noO5NpjvvUWD3Psu8j0A&s" }}
-              style={styles.logo}
-            />
-            <View style={styles.logoTextContainer}>
-              {['M', 'E', 'D', 'I', 'C', 'A', 'R', 'E', '+'].map((letter, index) => (
-                <Animated.Text
-                  key={index}
-                  style={[ styles.logoText, index < 4 ? styles.redText : styles.whiteText, styles.customFont,
-                    {
-                      color: textColor,
-                      transform: [{ translateY: logoAnimations[index] }],
-                    },
-                  ]}
+
+            {/* Header with Logo and Text - Hide when keyboard is visible */}
+            {!keyboardVisible && (
+              <View style={[styles.header, { left: 12, top: Math.max(16, screenHeight * 0.07) }]}>
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  accessibilityLabel="Go back"
+                  style={{ marginRight: 8, padding: 6 }}
                 >
-                  {letter}
-                </Animated.Text>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Content Container */}
-        <View style={styles.formContainer}>
-          <ScrollView 
-            ref={scrollViewRef}
-            contentContainerStyle={[
-              styles.scrollContent,
-              keyboardVisible && styles.scrollContentKeyboard
-            ]}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            bounces={false}
-          >
-        <View style={[styles.content, keyboardVisible && styles.contentKeyboard]}>
-          <Text style={[styles.title, { color: textColor }]}>Create Account</Text>
-          <Text style={[styles.subtitle, { color: subtitleColor }]}>Create your pharmacy account for personalized healthcare</Text>
-
-          <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
-            <MaterialCommunityIcons
-              name="account-outline"
-              size={24}
-              color={subtitleColor}
-              style={styles.icon}
-            />
-            <TextInput
-              placeholder="Full Name"
-              placeholderTextColor={subtitleColor}
-              style={[styles.input, { color: textColor }]}
-              value={fullName}
-              onChangeText={setFullName}
-              autoCapitalize="words"
-              returnKeyType="next"
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
-            <MaterialCommunityIcons
-              name="email-outline"
-              size={24}
-              color={subtitleColor}
-              style={styles.icon}
-            />
-            <TextInput
-              placeholder="Email Address"
-              placeholderTextColor={subtitleColor}
-              style={[styles.input, { color: textColor }]}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType="next"
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
-            <MaterialCommunityIcons
-              name="phone-outline"
-              size={24}
-              color={subtitleColor}
-              style={styles.icon}
-            />
-            <TextInput
-              placeholder="Phone Number"
-              placeholderTextColor={subtitleColor}
-              style={[styles.input, { color: textColor }]}
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              returnKeyType="next"
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
-            <MaterialCommunityIcons
-              name="lock-outline"
-              size={24}
-              color={subtitleColor}
-              style={styles.icon}
-            />
-            <TextInput
-              placeholder="Create Password"
-              placeholderTextColor={subtitleColor}
-              style={[styles.input, { color: textColor }]}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              returnKeyType="done"
-              onSubmitEditing={handleSubmit}
-            />
-            <TouchableOpacity 
-              onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
-            >
-              <MaterialCommunityIcons
-                name={showPassword ? "eye-off" : "eye"}
-                size={20}
-                color={subtitleColor}
-              />
-            </TouchableOpacity>
-          </View>
-
-          {error && <Text style={[styles.errorText, { backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }]}>{error}</Text>}
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <LinearGradient
-              colors={[accentColor, accentColor]}
-              style={[styles.buttonInner, { paddingVertical: 14, borderRadius: 12, width: '100%' }]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <MaterialCommunityIcons
-                    name="account-plus"
-                    size={20}
-                    color="#FFF"
-                  />
-                  <Text style={styles.buttonText}>Join MediCare+</Text>
+                  <MaterialCommunityIcons name="arrow-left" size={24} color={textColor} />
+                </TouchableOpacity>
+                <Image
+                  source={{ uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQumTE4MdxmvhSlr5noO5NpjvvUWD3Psu8j0A&s" }}
+                  style={styles.logo}
+                />
+                <View style={styles.logoTextContainer}>
+                  {['M', 'E', 'D', 'I', 'C', 'A', 'R', 'E', '+'].map((letter, index) => (
+                    <Animated.Text
+                      key={index}
+                      style={[styles.logoText, index < 4 ? styles.redText : styles.whiteText, styles.customFont,
+                      {
+                        color: textColor,
+                        transform: [{ translateY: logoAnimations[index] }],
+                      },
+                      ]}
+                    >
+                      {letter}
+                    </Animated.Text>
+                  ))}
                 </View>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+              </View>
+            )}
 
-          <TouchableOpacity
-            style={styles.footer}
-            onPress={() => navigation.navigate('SignIn')}
-          >
-            <Text style={[styles.footerText, { color: subtitleColor }]}>
-              Already have an account?{' '}
-              <Text style={[styles.footerLink, { color: accentColor }]}>
-                <MaterialCommunityIcons
-                  name="login"
-                  size={16}
-                  color={accentColor}
-                />
-                {' '}Sign In
-              </Text>
-            </Text>
-          </TouchableOpacity>
+            {/* Content Container */}
+            <View style={styles.formContainer}>
+              <ScrollView
+                ref={scrollViewRef}
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  keyboardVisible && styles.scrollContentKeyboard
+                ]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                bounces={false}
+              >
+                <View style={[styles.content, keyboardVisible && styles.contentKeyboard]}>
+                  <Text style={[styles.title, { color: textColor }]}>Create Account</Text>
+                  <Text style={[styles.subtitle, { color: subtitleColor }]}>Create your pharmacy account for personalized healthcare</Text>
 
-          {/* OAuth Buttons */}
-          <View style={styles.oauthContainer}>
-            <Text style={[styles.oauthTitle, { color: subtitleColor }]}>Or continue with</Text>
-            <View style={styles.oauthButtonsRow}>
-              {/* Google OAuth */}
-              <TouchableOpacity style={[styles.oauthButton, { backgroundColor: inputBg }]}>
-                <Image
-                  source={{ uri: 'https://crystalpng.com/wp-content/uploads/2025/05/google-logo-png.png' }}
-                  style={styles.oauthLogo}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-              
-              {/* Guest Account */}
-              <TouchableOpacity style={[styles.oauthButton, { backgroundColor: inputBg }]}>
-                <Image
-                  source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLDvv2ijoL0v9aPkHz99nGIE76EvFig_JqkA&s' }}
-                  style={styles.oauthLogo}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-              
-              {/* Facebook OAuth */}
-              <TouchableOpacity style={[styles.oauthButton, { backgroundColor: inputBg }]}>
-                <Image
-                  source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAc2qnQvWBFUJo16J7KCxCTQ8TZcMpMwRMg_XdZ2VwI19HGH7MSg7RwoMDPZ05WQG8STg&usqp=CAU' }}
-                  style={styles.oauthLogo}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
+                  <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
+                    <MaterialCommunityIcons
+                      name="account-outline"
+                      size={24}
+                      color={subtitleColor}
+                      style={styles.icon}
+                    />
+                    <TextInput
+                      placeholder="Full Name"
+                      placeholderTextColor={subtitleColor}
+                      style={[styles.input, { color: textColor }]}
+                      value={fullName}
+                      onChangeText={setFullName}
+                      autoCapitalize="words"
+                      returnKeyType="next"
+                    />
+                  </View>
+
+                  <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
+                    <MaterialCommunityIcons
+                      name="email-outline"
+                      size={24}
+                      color={subtitleColor}
+                      style={styles.icon}
+                    />
+                    <TextInput
+                      placeholder="Email Address"
+                      placeholderTextColor={subtitleColor}
+                      style={[styles.input, { color: textColor }]}
+                      value={email}
+                      onChangeText={setEmail}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      returnKeyType="next"
+                    />
+                  </View>
+
+                  <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
+                    <MaterialCommunityIcons
+                      name="phone-outline"
+                      size={24}
+                      color={subtitleColor}
+                      style={styles.icon}
+                    />
+                    <TextInput
+                      placeholder="Phone Number"
+                      placeholderTextColor={subtitleColor}
+                      style={[styles.input, { color: textColor }]}
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                      returnKeyType="next"
+                    />
+                  </View>
+
+                  <View style={[styles.inputContainer, { backgroundColor: inputBg }]}>
+                    <MaterialCommunityIcons
+                      name="lock-outline"
+                      size={24}
+                      color={subtitleColor}
+                      style={styles.icon}
+                    />
+                    <TextInput
+                      placeholder="Create Password"
+                      placeholderTextColor={subtitleColor}
+                      style={[styles.input, { color: textColor }]}
+                      secureTextEntry={!showPassword}
+                      value={password}
+                      onChangeText={setPassword}
+                      returnKeyType="done"
+                      onSubmitEditing={handleSubmit}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={styles.eyeIcon}
+                    >
+                      <MaterialCommunityIcons
+                        name={showPassword ? "eye-off" : "eye"}
+                        size={20}
+                        color={subtitleColor}
+                      />
+                    </TouchableOpacity>
+                  </View>
+
+                  {error && <Text style={[styles.errorText, { backgroundColor: 'rgba(239,68,68,0.08)', color: '#EF4444' }]}>{error}</Text>}
+
+                  <TouchableOpacity
+                    style={styles.button}
+                    onPress={handleSubmit}
+                    disabled={loading}
+                  >
+                    <LinearGradient
+                      colors={[accentColor, accentColor]}
+                      style={[styles.buttonInner, { paddingVertical: 14, borderRadius: 12, width: '100%' }]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <View style={styles.buttonContent}>
+                          <MaterialCommunityIcons
+                            name="account-plus"
+                            size={20}
+                            color="#FFF"
+                          />
+                          <Text style={styles.buttonText}>Join MediCare+</Text>
+                        </View>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.footer}
+                    onPress={() => navigation.navigate('SignIn')}
+                  >
+                    <Text style={[styles.footerText, { color: subtitleColor }]}>
+                      Already have an account?{' '}
+                      <Text style={[styles.footerLink, { color: accentColor }]}>
+                        <MaterialCommunityIcons
+                          name="login"
+                          size={16}
+                          color={accentColor}
+                        />
+                        {' '}Sign In
+                      </Text>
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* OAuth Buttons */}
+                  <View style={styles.oauthContainer}>
+                    <Text style={[styles.oauthTitle, { color: subtitleColor }]}>Or continue with</Text>
+                    <View style={styles.oauthButtonsRow}>
+                      {/* Google OAuth */}
+                      <TouchableOpacity style={[styles.oauthButton, { backgroundColor: inputBg }]}>
+                        <Image
+                          source={{ uri: 'https://crystalpng.com/wp-content/uploads/2025/05/google-logo-png.png' }}
+                          style={styles.oauthLogo}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+
+                      {/* Guest Account */}
+                      <TouchableOpacity style={[styles.oauthButton, { backgroundColor: inputBg }]}>
+                        <Image
+                          source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLDvv2ijoL0v9aPkHz99nGIE76EvFig_JqkA&s' }}
+                          style={styles.oauthLogo}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+
+                      {/* Facebook OAuth */}
+                      <TouchableOpacity style={[styles.oauthButton, { backgroundColor: inputBg }]}>
+                        <Image
+                          source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTAc2qnQvWBFUJo16J7KCxCTQ8TZcMpMwRMg_XdZ2VwI19HGH7MSg7RwoMDPZ05WQG8STg&usqp=CAU' }}
+                          style={styles.oauthLogo}
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </ScrollView>
             </View>
-          </View>
-        </View>
-        </ScrollView>
-        </View>
-        </LinearGradient>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+          </LinearGradient>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </>
   );
 };
@@ -451,7 +489,7 @@ const styles = StyleSheet.create({
     paddingTop: screenHeight * 0.05,
     minHeight: screenHeight * 0.7,
   },
- 
+
   title: {
     fontSize: screenWidth * 0.08, // Responsive title
     fontWeight: "700",
