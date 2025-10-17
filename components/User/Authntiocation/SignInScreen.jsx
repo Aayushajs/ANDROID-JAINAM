@@ -164,7 +164,9 @@ const SignInScreen = ({ navigation }) => {
 
       if (result.success) {
         if (authLogin && result.data) {
-          await authLogin(result.data);
+          // server may nest actual payload inside result.data.data — prefer that if present
+          const payload = result.data?.data || result.data;
+          await authLogin(payload);
         }
 
       } else {

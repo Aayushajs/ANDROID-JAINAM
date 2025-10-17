@@ -68,9 +68,8 @@ export default function App() {
     checkUpdates();
   }, []);
 
-  // Set status bar text color opposite to app background
   const colorScheme = useColorScheme();
-  // If app bg is light, status bar text is dark; if app bg is dark, status bar text is light
+
   const barStyle = colorScheme === 'dark' ? 'light-content' : 'dark-content';
 
     return (
