@@ -24,7 +24,11 @@ const handleResponse = (res) => {
 };
 
 const handleError = (error) => {
-  console.error("❌ API Error:", error.response?.data || error.message);
+  // More detailed logging to help debug network issues from mobile
+  console.error("API Error message:", error.message);
+  console.error("API Error config:", error.config);
+  console.error("API Error request:", error.request);
+  console.error("API Error response:", error.response?.data || error.response);
 
   return {
     success: false,
@@ -54,11 +58,11 @@ export const signupUser = async (payload) => {
   }
 };
 
-export const loginUser = async ({ email, password }) => {
+export const loginUser = async (payload) => {
   try {
     const res = await axios.post(
       Login,
-      { email, password },
+      payload,
       { withCredentials: true, headers: { "Content-Type": "application/json" } }
     );
     console.log("response via loginuser : ", res);

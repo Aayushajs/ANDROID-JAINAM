@@ -24,7 +24,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from 'react-native';
 import { useAuth } from "../../context/AuthContext";
 import LottieView from 'lottie-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 import { loginUser } from "../../../Apis/ApiSlashing";
+
 
 // Get screen dimensions for responsive design
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
@@ -153,11 +157,36 @@ const SignInScreen = ({ navigation }) => {
 
     try {
       setLoading(true);
-      
-      // Call loginUser API from ApiSlashing.js
+
+      // Obtain Expo push token (read stored first, otherwise request and store)
+      let fcmToken = null;
+      try {
+        const stored = await AsyncStorage.getItem('fcmToken');
+        if (stored) {
+          fcmToken = stored;
+        } else {
+          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          let finalStatus = existingStatus;
+          if (existingStatus !== 'granted') {
+            const { status } = await Notifications.requestPermissionsAsync();
+            finalStatus = status;
+          }
+          if (finalStatus === 'granted' && Device.isDevice) {
+            const tokenData = await Notifications.getExpoPushTokenAsync();
+            fcmToken = tokenData?.data ?? null;
+            if (fcmToken) {
+              try { await AsyncStorage.setItem('fcmToken', fcmToken); } catch (w) { console.warn('Failed to store fcmToken:', w); }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Error obtaining/reading fcmToken:', e);
+      }
+
       const result = await loginUser({
         email: email,
-        password: password
+        password: password,
+        fcmToken: fcmToken,
       });
 
       // console.log("Login result:", result);

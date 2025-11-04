@@ -1,6 +1,18 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+
+// Ensure notifications are shown while app is in the foreground and play sound
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const AuthContext = createContext();
 
@@ -18,13 +30,60 @@ export const AuthProvider = ({ children }) => {
     const checkToken = async () => {
       try {
         const storedData = await AsyncStorage.getItem('jwtToken');
+        const registerForPushNotificationsAsync = async () => {
+          try {
+            if (!Device.isDevice) {
+              console.log('Must use physical device for push notifications');
+              return null;
+            }
+
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+              const { status } = await Notifications.requestPermissionsAsync();
+              finalStatus = status;
+            }
+
+            if (finalStatus !== 'granted') {
+              console.log('Push notification permission not granted');
+              return null;
+            }
+
+            const tokenData = await Notifications.getExpoPushTokenAsync();
+            const expoToken = tokenData?.data ?? null;
+            if (expoToken) {
+              console.log('Expo push token:', expoToken);
+              await AsyncStorage.setItem('fcmToken', expoToken);
+            }
+            return expoToken;
+          } catch (err) {
+            console.warn('Error registering for push notifications:', err);
+            return null;
+          }
+        };
+
+        registerForPushNotificationsAsync();
+
+        // Create Android channel to ensure sound/vibration work on Android devices
+        if (Platform.OS === 'android') {
+          try {
+            await Notifications.setNotificationChannelAsync('default', {
+              name: 'default',
+              importance: Notifications.AndroidImportance.MAX,
+              vibrationPattern: [0, 250, 250, 250],
+              sound: 'default',
+            });
+          } catch (errCh) {
+            console.warn('Failed to create Android notification channel:', errCh);
+          }
+        }
+
         if (storedData) {
           const parsedData = JSON.parse(storedData); 
           const storedToken = parsedData?.token || parsedData?.userToken || parsedData?.user?.token || null;
           const storedUser = parsedData?.user || parsedData?.user || null;
 
-          console.log("Restored token:", storedToken);
-          console.log("Restored user:", storedUser);
+          
 
           if (storedToken) {
             // set axios default header so subsequent requests include token
@@ -38,13 +97,13 @@ export const AuthProvider = ({ children }) => {
             setToken(null);
           }
         } else {
-          setIsAuthenticated(false); // ✅ nothing stored
+          setIsAuthenticated(false); 
         }
       } catch (error) {
         console.error('Error checking token:', error);
         setIsAuthenticated(false);
       } finally {
-        setIsLoading(false); // ✅ done loading
+        setIsLoading(false);
       }
     };
 
