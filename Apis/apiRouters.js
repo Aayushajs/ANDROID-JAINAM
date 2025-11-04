@@ -10,7 +10,6 @@ export const VerifyOtp = `${API_BASE_URL}/api/v1/users/verify-otp`
 export const ResetPassword = `${API_BASE_URL}/api/v1/users/reset-password`
 export const GoogleLogin = `${API_BASE_URL}/api/v1/users/google-login`
 
-
 // Users Routes
 export const GetUserProfile = `${API_BASE_URL}/api/v1/users/profile`
-export const UpdateUserProfile = `${API_BASE_URL}/api/v1/users/profile/update`
+export const UpdateUserProfile = `${API_BASE_URL}/api/v1/users/update/profile`

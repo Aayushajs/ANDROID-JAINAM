@@ -11,6 +11,7 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: false,
+    shouldShowBanner: true,
   }),
 });
 
@@ -109,6 +110,36 @@ export const AuthProvider = ({ children }) => {
 
 
     checkToken();
+
+    // Setup axios interceptor to handle token expiry globally
+    const interceptor = axios.interceptors.response.use(
+      (response) => response, // Success response
+      async (error) => {
+        // Check for JWT expiry - can be status 401 or 500 with JWT expired message
+        const isJWTExpired = 
+          (error.response?.status === 401 || error.response?.status === 500) && (
+            error.response?.data?.message === 'jwt expired' ||
+            error.response?.data?.message === 'Token expired' ||
+            error.response?.data?.message === 'jwt malformed' ||
+            error.response?.data?.message === 'invalid token' ||
+            error.response?.data?.message === 'Invalid token' ||
+            (error.response?.data?.message?.toLowerCase?.()?.includes('jwt') && 
+             error.response?.data?.message?.toLowerCase?.()?.includes('expired'))
+          );
+
+        if (isJWTExpired) {
+          console.log('JWT expired detected in API response - Auto logout');
+          await handleTokenExpiry();
+        }
+        
+        return Promise.reject(error);
+      }
+    );
+
+    // Cleanup interceptor on unmount
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
   }, []);
 
   const login = async (data) => {
@@ -135,6 +166,7 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('jwtToken'); // Remove token from AsyncStorage
+      await AsyncStorage.removeItem('fcmToken'); // Also remove FCM token
 
       // Remove default axios header
       delete axios.defaults.headers.common['Authorization'];
@@ -147,13 +179,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Handle JWT expiry and auto-logout
+  const handleTokenExpiry = async () => {
+    console.log('JWT Token expired - Auto logging out...');
+    await logout();
+  };
+
   if (isLoading) {
     // Show nothing or a splash screen while loading
     return null;
   }
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout, handleTokenExpiry }}>
       {children}
     </AuthContext.Provider>
   );

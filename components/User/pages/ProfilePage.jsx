@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions,
   Platform, StatusBar, useColorScheme, Alert, Animated, Easing,
+  ActivityIndicator, Image,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { getUserProfile } from '../../../Apis/ApiSlashing';
 
 // Constants
 const { width: screenWidth } = Dimensions.get('window');
@@ -22,15 +24,20 @@ const COLORS = {
   darkBgLight: '#3A3A3A',
 };
 
-// User Data
-const userData = {
-  name: 'Aayush Sharma',
-  email: 'aayush.sharma@gmail.com',
-  phone: '+91 98765 43210',
-  age: '28 Years',
-  bloodGroup: 'B+',
-  avatar: 'A',
-  bio: 'Regular customer at MEDICARE+ pharmacy. Health-conscious individual who prefers quality medicines and reliable healthcare products.',
+// Initial user data structure
+const initialUserData = {
+  name: '',
+  email: '',
+  phone: '',
+  age: null,
+  dob: null,
+  role: '',
+  address: {},
+  profileImage: [],
+  wishlistCount: 0,
+  viewedItemsCount: 0,
+  itemsPurchasedCount: 0,
+  lastLogin: null,
 };
 
 // Menu Items
@@ -88,8 +95,113 @@ const ContactItem = ({ icon, text, isDark }) => (
 
 const ProfilePage = () => {
   const navigation = useNavigation();
-  const { logout } = useAuth();
+  const { logout, handleTokenExpiry } = useAuth();
   const isDark = useColorScheme() === 'dark';
+  const [userData, setUserData] = useState(initialUserData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  // Fetch user profile data
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      console.log('=== ProfilePage fetchUserProfile Start ===');
+      const response = await getUserProfile();
+      console.log('=== ProfilePage Response ===', response);
+      
+      if (response.success && response.data) {
+        setUserData(response.data.data || response.data);
+      } else {
+        // Check for JWT expiry - can be status 401 or 500 with JWT expired message
+        const isJWTExpired = 
+          (response.status === 401 || response.status === 500) && (
+            response.message === 'jwt expired' ||
+            response.message === 'Token expired' ||
+            response.message === 'jwt malformed' ||
+            response.message === 'invalid token' ||
+            (response.message?.toLowerCase?.()?.includes('jwt') && 
+             response.message?.toLowerCase?.()?.includes('expired'))
+          );
+
+        if (isJWTExpired) {
+          console.log('JWT expired in profile API - Auto logout');
+          if (handleTokenExpiry) {
+            await handleTokenExpiry();
+          }
+          return;
+        }
+        
+        // For non-JWT errors, show appropriate message
+        console.log('API Error (not JWT related):', response.message);
+        setError(response.message || 'Failed to load profile');
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      // Check for JWT expiry - can be status 401 or 500 with JWT expired message
+      const isJWTExpired = 
+        (err.response?.status === 401 || err.response?.status === 500) && (
+          err.response?.data?.message === 'jwt expired' ||
+          err.response?.data?.message === 'Token expired' ||
+          err.response?.data?.message === 'jwt malformed' ||
+          err.response?.data?.message === 'invalid token' ||
+          (err.response?.data?.message?.toLowerCase?.()?.includes('jwt') && 
+           err.response?.data?.message?.toLowerCase?.()?.includes('expired'))
+        );
+
+      if (isJWTExpired) {
+        console.log('JWT expired caught in profile API - Auto logout');
+        if (handleTokenExpiry) {
+          await handleTokenExpiry();
+        }
+        return;
+      }
+      
+      // For non-JWT errors, show appropriate message based on status
+      const errorMessage = err.response?.status === 500 
+        ? 'Server error. Please try again later.' 
+        : err.response?.data?.message || 'Network error. Please try again.';
+      
+      console.log('API Error (not JWT related):', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  const formatAge = (age, dob) => {
+    if (age) return `${age} Years`;
+    if (dob) {
+      const birthDate = new Date(dob);
+      const today = new Date();
+      const calculatedAge = Math.floor((today - birthDate) / (365.25 * 24 * 60 * 60 * 1000));
+      return `${calculatedAge} Years`;
+    }
+    return 'Not specified';
+  };
+
+  const formatAddress = (address) => {
+    if (!address || Object.keys(address).length === 0) return 'Not specified';
+    const parts = [];
+    if (address.street) parts.push(address.street);
+    if (address.city) parts.push(address.city);
+    if (address.state) parts.push(address.state);
+    if (address.country) parts.push(address.country);
+    return parts.join(', ') || 'Not specified';
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -158,6 +270,11 @@ const ProfilePage = () => {
     };
 
     const socialIcons = ['instagram', 'twitter', 'github'];
+    const profileImageUrl = userData.profileImage && userData.profileImage.length > 0 
+      ? userData.profileImage[0] 
+      : null;
+    
+    const userBio = `${userData.role || 'User'} at MEDICARE+ pharmacy. Total orders: ${userData.itemsPurchasedCount || 0}`;
   
     return (
       <TouchableOpacity 
@@ -171,12 +288,20 @@ const ProfilePage = () => {
             { 
               transform: [{ scale: profilePicScale }],
               borderRadius: cardExpanded ? 20 : 50,
-              borderColor: isDark ? '#c56161ff' : '#fff' // Green border color
+              borderColor: isDark ? '#c56161ff' : '#fff'
             }
           ]}
         >
           <View style={styles.profilePic}>
-            <Text style={styles.avatarText}>{userData.avatar}</Text>
+            {profileImageUrl ? (
+              <Image 
+                source={{ uri: profileImageUrl }}
+                style={styles.profileImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials(userData.name)}</Text>
+            )}
           </View>
         </Animated.View>
   
@@ -187,8 +312,8 @@ const ProfilePage = () => {
           ]}
         >
           <View style={styles.content}>
-            <Text style={styles.userName}>{userData.name}</Text>
-            <Text style={styles.userBio}>{userData.bio}</Text>
+            <Text style={styles.userName}>{userData.name || 'User'}</Text>
+            <Text style={styles.userBio}>{userBio}</Text>
           </View>
   
           <View style={styles.bottomContainer}>
@@ -202,9 +327,9 @@ const ProfilePage = () => {
             
             <TouchableOpacity 
               style={styles.contactButton}
-              onPress={() => navigation.navigate('EditProfile')}
+              onPress={() => navigation.navigate('EditProfile', { userData, refreshProfile: fetchUserProfile })}
             >
-              <Text style={styles.contactButtonText}>Contact Me</Text>
+              <Text style={styles.contactButtonText}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -212,11 +337,55 @@ const ProfilePage = () => {
     );
   };
 
+  // Loading screen
+  if (loading) {
+    return (
+      <LinearGradient
+        colors={isDark ? ['#1A1A1A', COLORS.darkBg] : [COLORS.white, '#F8F9FA']}
+        style={[styles.container, styles.centerItems]}
+      >
+        <ActivityIndicator size="large" color={isDark ? COLORS.primaryDark : COLORS.primary} />
+        <Text style={[styles.loadingText, { color: isDark ? COLORS.white : COLORS.black }]}>
+          Loading Profile...
+        </Text>
+      </LinearGradient>
+    );
+  }
+
+  // Error screen
+  if (error) {
+    return (
+      <LinearGradient
+        colors={isDark ? ['#1A1A1A', COLORS.darkBg] : [COLORS.white, '#F8F9FA']}
+        style={[styles.container, styles.centerItems]}
+      >
+        <MaterialCommunityIcons 
+          name="alert-circle-outline" 
+          size={getResponsiveSize(64)} 
+          color={isDark ? '#EF4444' : '#DC2626'} 
+        />
+        <Text style={[styles.errorTitle, { color: isDark ? COLORS.white : COLORS.black }]}>
+          Failed to Load Profile
+        </Text>
+        <Text style={[styles.errorText, { color: isDark ? '#CCCCCC' : '#6B7280' }]}>
+          {error}
+        </Text>
+        <TouchableOpacity 
+          style={[styles.retryButton, { backgroundColor: isDark ? COLORS.primaryDark : COLORS.primary }]}
+          onPress={fetchUserProfile}
+        >
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
+
   const contactItems = [
-    { icon: 'email-outline', text: userData.email },
-    { icon: 'phone-outline', text: userData.phone },
-    { icon: 'water', text: `Blood Group: ${userData.bloodGroup}` },
-    { icon: 'cake-variant', text: `Age: ${userData.age}` },
+    { icon: 'email-outline', text: userData.email || 'Not specified' },
+    { icon: 'phone-outline', text: userData.phone || 'Not specified' },
+    { icon: 'map-marker-outline', text: formatAddress(userData.address) },
+    { icon: 'cake-variant', text: formatAge(userData.age, userData.dob) },
+    { icon: 'crown-outline', text: `Role: ${userData.role || 'User'}` },
   ];
 
   return (
@@ -344,7 +513,13 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 50,
     backgroundColor: COLORS.primaryDark,
+    overflow: 'hidden',
     ...StyleSheet.flatten([{ alignItems: 'center', justifyContent: 'center' }])
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
   },
   avatarText: { color: COLORS.white, fontSize: getResponsiveSize(32), fontWeight: 'bold' },
   contentContainer: {
@@ -415,6 +590,36 @@ const styles = StyleSheet.create({
       shadowRadius: 6,
       elevation: 5
     }])
+  },
+
+  // Loading and Error States
+  loadingText: { 
+    fontSize: getResponsiveSize(16), 
+    marginTop: 20, 
+    textAlign: 'center' 
+  },
+  errorTitle: { 
+    fontSize: getResponsiveSize(20), 
+    fontWeight: 'bold', 
+    marginTop: 20, 
+    textAlign: 'center' 
+  },
+  errorText: { 
+    fontSize: getResponsiveSize(14), 
+    marginTop: 10, 
+    textAlign: 'center', 
+    paddingHorizontal: 20 
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: getResponsiveSize(30),
+    paddingVertical: getResponsiveSize(12),
+    borderRadius: getResponsiveSize(25),
+  },
+  retryButtonText: {
+    color: COLORS.white,
+    fontSize: getResponsiveSize(16),
+    fontWeight: 'bold',
   },
 
   // Version

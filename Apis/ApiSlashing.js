@@ -5,9 +5,12 @@ import {
   ForgotPassword,
   VerifyOtp,
   ResetPassword,
+  GetUserProfile,
+  UpdateUserProfile,
   // GoogleLogin
 } from "./apiRouters.js";
 import axios from "axios";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const handleResponse = (res) => {
   if (!res || !res.data) {
@@ -24,11 +27,6 @@ const handleResponse = (res) => {
 };
 
 const handleError = (error) => {
-  // More detailed logging to help debug network issues from mobile
-  console.error("API Error message:", error.message);
-  console.error("API Error config:", error.config);
-  console.error("API Error request:", error.request);
-  console.error("API Error response:", error.response?.data || error.response);
 
   return {
     success: false,
@@ -126,6 +124,101 @@ export const resetPassword = async ({ password }) => {
       { withCredentials: true, headers: { "Content-Type": "application/json" } }
     );
     console.log("response via resetPassword : ", res);
+
+    return handleResponse(res);
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// profile update and get functions can be added here in future
+
+export const updateUserProfile = async (payload, isFormData = false) => {
+  try {
+    let authToken = null;
+    try {
+      const storedData = await AsyncStorage.getItem('jwtToken');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        authToken = parsedData.token;
+      }
+    } catch (tokenError) {
+      
+    }
+    
+    if (isFormData) {
+      let headers = {};
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      const response = await fetch(UpdateUserProfile, {
+        method: 'PUT',
+        headers: headers,
+        body: payload,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+      
+      const responseData = await response.json();
+      return { success: true, status: response.status, data: responseData };
+      
+    } else {
+      // Use axios for JSON requests
+      let headers = {
+        "Content-Type": "application/json"
+      };
+      
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      const res = await axios.put(UpdateUserProfile, payload, {
+        headers: headers,
+        timeout: 30000,
+      });
+
+      return handleResponse(res);
+    }
+    
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getUserProfile = async () => {
+  try {
+    // Get authentication token from AsyncStorage
+    let authToken = null;
+    try {
+      const storedData = await AsyncStorage.getItem('jwtToken');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        authToken = parsedData.token;
+      }
+    } catch (tokenError) {
+      // Token retrieval failed
+    }
+    
+    let headers = {
+      "Content-Type": "application/json"
+    };
+    
+    // Add authentication token to headers if available
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    const res = await axios.get(
+      GetUserProfile,
+      { 
+        headers: headers,
+        timeout: 15000,
+      }
+    );
 
     return handleResponse(res);
   } catch (error) {
