@@ -9,6 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { getUserProfile } from '../../../Apis/ApiSlashing';
+import ActionGrid from './ActionGrid';
+import PrivacyTermsPage from './PrivacyTermsPage';
 
 // Constants
 const { width: screenWidth } = Dimensions.get('window');
@@ -16,6 +18,8 @@ const getResponsiveSize = (size) => (screenWidth / 375) * size;
 const COLORS = {
   primary: '#e16c61f1',
   primaryDark: '#d77b7bff',
+  primarySculpture: '#cacaca6e',
+  primaryLight: '#cfcfcfad',
   white: '#FFFFFF',
   black: '#1F2937',
   gray: '#6B7280',
@@ -40,45 +44,7 @@ const initialUserData = {
   lastLogin: null,
 };
 
-// Menu Items
-const profileMenuItems = [
-  { id: 1, title: 'Personal Information', icon: 'account-outline', nav: 'EditProfile' },
-  { id: 2, title: 'Order History', icon: 'shopping-outline', nav: 'OrderHistory' },
-  { id: 3, title: 'My Prescriptions', icon: 'file-document-outline', nav: 'MyPrescriptions' },
-  { id: 4, title: 'Saved Addresses', icon: 'map-marker-multiple-outline', nav: 'SavedAddresses' },
-  { id: 5, title: 'Loyalty Points', icon: 'star-circle-outline', nav: 'LoyaltyPoints' },
-  { id: 6, title: 'Wishlist', icon: 'heart-outline', nav: 'Wishlist' },
-  { id: 7, title: 'Notifications', icon: 'bell-outline', nav: 'Notifications' },
-  { id: 8, title: 'Settings', icon: 'cog-outline', nav: 'Settings' },
-  { id: 9, title: 'Help & Support', icon: 'help-circle-outline', nav: 'Support' },
-];
 
-// Components
-const MenuItem = ({ item, navigation, isDark }) => (
-  <TouchableOpacity
-    style={[styles.menuItem, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}
-    onPress={() => navigation.navigate(item.nav)}
-    activeOpacity={0.7}
-  >
-    <View style={styles.menuItemLeft}>
-      <View style={[styles.menuIconContainer, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]}>
-        <MaterialCommunityIcons 
-          name={item.icon} 
-          size={getResponsiveSize(22)} 
-          color={isDark ? COLORS.primaryDark : COLORS.primary} 
-        />
-      </View>
-      <Text style={[styles.menuItemText, { color: isDark ? COLORS.white : COLORS.black }]}>
-        {item.title}
-      </Text>
-    </View>
-    <MaterialCommunityIcons 
-      name="chevron-right" 
-      size={getResponsiveSize(20)} 
-      color={isDark ? '#CCCCCC' : '#9CA3AF'} 
-    />
-  </TouchableOpacity>
-);
 
 const ContactItem = ({ icon, text, isDark }) => (
   <View style={styles.contactItem}>
@@ -100,6 +66,7 @@ const ProfilePage = () => {
   const [userData, setUserData] = useState(initialUserData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [personalDetailsExpanded, setPersonalDetailsExpanded] = useState(true);
 
   // Fetch user profile data
   useEffect(() => {
@@ -110,9 +77,7 @@ const ProfilePage = () => {
     try {
       setLoading(true);
       setError('');
-      console.log('=== ProfilePage fetchUserProfile Start ===');
       const response = await getUserProfile();
-      console.log('=== ProfilePage Response ===', response);
       
       if (response.success && response.data) {
         setUserData(response.data.data || response.data);
@@ -337,19 +302,77 @@ const ProfilePage = () => {
     );
   };
 
+  // Skeleton Loading Component
+  const SkeletonLoader = () => (
+    <LinearGradient
+      colors={isDark ? ['#1A1A1A', COLORS.darkBg] : [COLORS.white, '#F8F9FA']}
+      style={styles.container}
+    >
+      <StatusBar 
+        backgroundColor={isDark ? '#1A1A1A' : COLORS.white} 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+      />
+      
+      {/* Header Skeleton */}
+      <View style={[styles.header, { borderBottomColor: isDark ? COLORS.darkBgLight : '#E5E7EB' }]}>
+        <View style={[styles.skeletonButton, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+        <View style={[styles.skeletonHeaderTitle, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+        <View style={[styles.skeletonButton, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Profile Card Skeleton */}
+        <View style={[styles.cardContainer, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
+          <View style={[styles.skeletonProfilePic, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.primarySculpture }]} />
+          <View style={[styles.skeletonContentContainer, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.primarySculpture }]}>
+            <View style={styles.skeletonContent}>
+              <View style={[styles.skeletonUserName, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]} />
+              <View style={[styles.skeletonUserBio, { backgroundColor: 'rgba(63, 60, 60, 0.46)' }]} />
+            </View>
+            <View style={styles.skeletonBottomContainer}>
+              <View style={styles.skeletonSocialLinks}>
+                {[1,2,3].map((i) => (
+                  <View key={i} style={[styles.skeletonSocialIcon, { backgroundColor: 'rgba(109, 105, 105, 0.3)' }]} />
+                ))}
+              </View>
+              <View style={[styles.skeletonContactButton, { backgroundColor: 'rgba(113, 104, 104, 0.4)' }]} />
+            </View>
+          </View>
+        </View>
+
+        {/* Personal Details Skeleton */}
+        <View style={[styles.section, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
+          <View style={[styles.skeletonSectionTitle, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+          {[1,2,3,4,5].map((i) => (
+            <View key={i} style={styles.skeletonContactItem}>
+              <View style={[styles.skeletonIcon, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+              <View style={[styles.skeletonContactText, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+            </View>
+          ))}
+        </View>
+
+        {/* Menu Items Skeleton */}
+        <View style={styles.menuSection}>
+          {[1,2,3,4,5,6,7,8,9].map((i) => (
+            <View key={i} style={[styles.menuItem, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.skeletonMenuIcon, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+                <View style={[styles.skeletonMenuText, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+              </View>
+              <View style={[styles.skeletonChevron, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+            </View>
+          ))}
+        </View>
+
+        {/* Logout Button Skeleton */}
+        <View style={[styles.skeletonLogoutButton, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+      </ScrollView>
+    </LinearGradient>
+  );
+
   // Loading screen
   if (loading) {
-    return (
-      <LinearGradient
-        colors={isDark ? ['#1A1A1A', COLORS.darkBg] : [COLORS.white, '#F8F9FA']}
-        style={[styles.container, styles.centerItems]}
-      >
-        <ActivityIndicator size="large" color={isDark ? COLORS.primaryDark : COLORS.primary} />
-        <Text style={[styles.loadingText, { color: isDark ? COLORS.white : COLORS.black }]}>
-          Loading Profile...
-        </Text>
-      </LinearGradient>
-    );
+    return <SkeletonLoader />;
   }
 
   // Error screen
@@ -370,11 +393,18 @@ const ProfilePage = () => {
         <Text style={[styles.errorText, { color: isDark ? '#CCCCCC' : '#6B7280' }]}>
           {error}
         </Text>
-        <TouchableOpacity 
-          style={[styles.retryButton, { backgroundColor: isDark ? COLORS.primaryDark : COLORS.primary }]}
-          onPress={fetchUserProfile}
+        <TouchableOpacity
+          style={[
+            styles.circularLogoutButton
+          ]}
+          onPress={handleLogout}
+          activeOpacity={0.7}
         >
-          <Text style={styles.retryButtonText}>Try Again</Text>
+          <MaterialCommunityIcons 
+            name="logout" 
+            size={getResponsiveSize(22)} 
+            color={COLORS.white} 
+          />
         </TouchableOpacity>
       </LinearGradient>
     );
@@ -407,31 +437,50 @@ const ProfilePage = () => {
           <MaterialCommunityIcons name="arrow-left" size={getResponsiveSize(24)} color={isDark ? COLORS.white : COLORS.black} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: isDark ? COLORS.white : COLORS.black }]}>Profile</Text>
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           onPress={() => navigation.navigate('EditProfile')}
           style={[styles.headerButton, { backgroundColor: isDark ? COLORS.primaryDark : COLORS.primary }]}
         >
           <MaterialCommunityIcons name="pencil" size={getResponsiveSize(18)} color={COLORS.white} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <ProfileCard userData={userData} isDark={isDark} />
-
-        {/* Contact & Health Information */}
+        {/* ActionGrid  */}
+        <ActionGrid isDark={isDark} navigation={navigation} />
+        {/* Personal Details - Collapsible */}
         <View style={[styles.section, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
-          <Text style={[styles.sectionTitle, { color: isDark ? COLORS.white : COLORS.black }]}>Personal Details</Text>
-          {contactItems.map((item, index) => (
-            <ContactItem key={index} icon={item.icon} text={item.text} isDark={isDark} />
-          ))}
+          <TouchableOpacity 
+            style={styles.sectionHeader}
+            onPress={() => setPersonalDetailsExpanded(!personalDetailsExpanded)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.sectionTitle, { color: isDark ? COLORS.white : COLORS.black, marginBottom: 0 }]}>
+              Personal Details
+            </Text>
+            <MaterialCommunityIcons 
+              name={personalDetailsExpanded ? "chevron-up" : "chevron-down"} 
+              size={getResponsiveSize(24)} 
+              color={isDark ? COLORS.white : COLORS.black}
+              style={[styles.chevronIcon, { 
+                transform: [{ rotate: personalDetailsExpanded ? '0deg' : '0deg' }] 
+              }]}
+            />
+          </TouchableOpacity>
+          
+          {personalDetailsExpanded && (
+            <View style={styles.expandableContent}>
+              {contactItems.map((item, index) => (
+                <ContactItem key={index} icon={item.icon} text={item.text} isDark={isDark} />
+              ))}
+            </View>
+          )}
         </View>
+        {/* <Text>Recently viewed products</Text> */}
+        {/* Privacy & Terms Page */}
+        <PrivacyTermsPage isDark={isDark} />
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {profileMenuItems.map((item) => (
-            <MenuItem key={item.id} item={item} navigation={navigation} isDark={isDark} />
-          ))}
-        </View>
 
         {/* Circular Logout Button */}
         <TouchableOpacity
@@ -482,7 +531,7 @@ const styles = StyleSheet.create({
     borderRadius: getResponsiveSize(20),
     ...StyleSheet.flatten([{ alignItems: 'center', justifyContent: 'center' }])
   },
-  headerTitle: { fontSize: getResponsiveSize(20), fontWeight: 'bold' },
+  headerTitle: { fontSize: getResponsiveSize(20), fontWeight: 'bold', flex: 1, textAlign: 'center' },
 
   // Scroll View
   scrollView: { flex: 1 },
@@ -551,6 +600,19 @@ const styles = StyleSheet.create({
     ...StyleSheet.flatten([{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 }])
   },
   sectionTitle: { fontSize: getResponsiveSize(18), fontWeight: 'bold', marginBottom: 15 },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+  },
+  chevronIcon: {
+    marginLeft: 10,
+  },
+  expandableContent: {
+    marginTop: 15,
+    overflow: 'hidden',
+  },
   contactItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   contactText: { fontSize: getResponsiveSize(14), marginLeft: 15 },
 
@@ -624,6 +686,126 @@ const styles = StyleSheet.create({
 
   // Version
   versionText: { textAlign: 'center', fontSize: getResponsiveSize(12), marginBottom: 10 },
+
+  // Skeleton Styles
+  skeletonButton: {
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
+    borderRadius: getResponsiveSize(20),
+    opacity: 0.7,
+  },
+  skeletonHeaderTitle: {
+    width: getResponsiveSize(100),
+    height: getResponsiveSize(20),
+    borderRadius: 6,
+    opacity: 0.7,
+  },
+  skeletonProfilePic: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: getResponsiveSize(100),
+    height: getResponsiveSize(100),
+    borderRadius: 50,
+    opacity: 0.7,
+  },
+  skeletonContentContainer: {
+    position: 'absolute',
+    left: 3,
+    right: 3,
+    bottom: 3,
+    height: getResponsiveSize(160),
+    borderRadius: 29,
+    borderTopLeftRadius: 70,
+    borderTopRightRadius: 30,
+    padding: getResponsiveSize(20),
+  },
+  skeletonContent: {
+    marginBottom: getResponsiveSize(20),
+    marginTop: 10,
+  },
+  skeletonUserName: {
+    width: getResponsiveSize(150),
+    height: getResponsiveSize(25),
+    borderRadius: 6,
+    marginBottom: getResponsiveSize(8),
+  },
+  skeletonUserBio: {
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(14),
+    borderRadius: 4,
+  },
+  skeletonBottomContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  skeletonSocialLinks: {
+    flexDirection: 'row',
+    gap: getResponsiveSize(15),
+  },
+  skeletonSocialIcon: {
+    width: getResponsiveSize(30),
+    height: getResponsiveSize(30),
+    borderRadius: 15,
+  },
+  skeletonContactButton: {
+    width: getResponsiveSize(80),
+    height: getResponsiveSize(24),
+    borderRadius: 12,
+  },
+  skeletonSectionTitle: {
+    width: getResponsiveSize(120),
+    height: getResponsiveSize(18),
+    borderRadius: 6,
+    marginBottom: 15,
+    opacity: 0.7,
+  },
+  skeletonContactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  skeletonIcon: {
+    width: getResponsiveSize(20),
+    height: getResponsiveSize(20),
+    borderRadius: 10,
+    marginRight: 15,
+    opacity: 0.7,
+  },
+  skeletonContactText: {
+    width: getResponsiveSize(180),
+    height: getResponsiveSize(14),
+    borderRadius: 4,
+    opacity: 0.7,
+  },
+  skeletonMenuIcon: {
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
+    borderRadius: getResponsiveSize(20),
+    marginRight: 15,
+    opacity: 0.7,
+  },
+  skeletonMenuText: {
+    flex: 1,
+    height: getResponsiveSize(16),
+    borderRadius: 4,
+    opacity: 0.7,
+  },
+  skeletonChevron: {
+    width: getResponsiveSize(20),
+    height: getResponsiveSize(20),
+    borderRadius: 4,
+    opacity: 0.7,
+  },
+  skeletonLogoutButton: {
+    width: getResponsiveSize(50),
+    height: getResponsiveSize(50),
+    borderRadius: getResponsiveSize(25),
+    marginHorizontal: screenWidth * 0.8,
+    marginBottom: 20,
+    opacity: 0.7,
+  },
 });
 
 export default ProfilePage;

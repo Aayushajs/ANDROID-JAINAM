@@ -37,7 +37,7 @@
         "backgroundColor": "#FFFFFF"
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "This app requires access to the camera for scanning prescriptions and uploading documents.",
+        "NSCameraUsageDescription": "This app requires access to the camera for scanning QR codes, prescriptions and uploading documents.",
         "NSPhotoLibraryUsageDescription": "This app requires access to photos to upload prescriptions."
       }
     },

@@ -131,23 +131,27 @@ const HeaderPage = () => {
         {/* Notification Icon */}
         <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: isDark ? '#3A3A3A' : '#F0F0F0' }]}
-          onPress={() => navigation.navigate('Notifications')}
+          onPress={() => navigation.navigate('CheckoutPage')}
           activeOpacity={0.7}
         >
           <MaterialCommunityIcons 
-            name="bell-outline" 
+            name="cart-outline" 
             size={screenWidth * 0.055} 
             color={isDark ? '#FFFFFF' : '#333333'} 
           />
         </TouchableOpacity>
 
-        {/* Profile Avatar */}
+        {/* Search Icon */}
         <TouchableOpacity
-          style={[styles.avatarButton, { backgroundColor: isDark ? '#FF6B6B' : '#E53935' }]}
-          onPress={() => navigation.navigate("ProfilePage")}
-          activeOpacity={0.8}
+          style={[styles.iconButton, { backgroundColor: isDark ? '#3A3A3A' : '#F0F0F0' }]}
+          onPress={() => navigation.navigate('Search')}
+          activeOpacity={0.7}
         >
-          <Text style={styles.avatarText}>A</Text>
+          <MaterialCommunityIcons 
+            name="magnify"
+            size={screenWidth * 0.055}
+            color={isDark ? '#FFFFFF' : '#333333'}
+          />
         </TouchableOpacity>
       </Animated.View>
     </LinearGradient>

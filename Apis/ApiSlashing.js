@@ -7,6 +7,10 @@ import {
   ResetPassword,
   GetUserProfile,
   UpdateUserProfile,
+  GetFeaturedMedicines,
+  TrackAdvertisementClick,
+  GetRunningAdvertisements,
+  GetActiveAdvertisements,
   // GoogleLogin
 } from "./apiRouters.js";
 import axios from "axios";
@@ -191,7 +195,6 @@ export const updateUserProfile = async (payload, isFormData = false) => {
 
 export const getUserProfile = async () => {
   try {
-    // Get authentication token from AsyncStorage
     let authToken = null;
     try {
       const storedData = await AsyncStorage.getItem('jwtToken');
@@ -200,14 +203,12 @@ export const getUserProfile = async () => {
         authToken = parsedData.token;
       }
     } catch (tokenError) {
-      // Token retrieval failed
     }
     
     let headers = {
       "Content-Type": "application/json"
     };
     
-    // Add authentication token to headers if available
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
@@ -220,6 +221,69 @@ export const getUserProfile = async () => {
       }
     );
 
+    return handleResponse(res);
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// GetFeaturedMedicines
+
+export const getFeaturedMedicines = async () => {
+  try {
+    const res = await axios.get(GetFeaturedMedicines, {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      timeout: 15000,
+    });
+    return handleResponse(res);
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+// advertisements
+
+export const trackAdvertisementClick = async (adId) => {
+  try {
+    const res = await axios.post(
+      `${TrackAdvertisementClick}/${adId}`,
+      {
+        headers: {
+          "Content-Type": "application/json"
+        },
+        timeout: 15000,
+      }
+    );
+    return handleResponse(res);
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getRunningAdvertisements = async () => {
+  try {
+    const res = await axios.get(GetRunningAdvertisements, {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      timeout: 15000,
+    });
+    return handleResponse(res);
+  } catch (error) {
+    return handleError(error);
+  }
+};
+
+export const getActiveAdvertisements = async () => {
+  try {
+    const res = await axios.get(GetActiveAdvertisements, {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      timeout: 15000,
+    });
     return handleResponse(res);
   } catch (error) {
     return handleError(error);
