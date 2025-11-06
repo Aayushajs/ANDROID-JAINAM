@@ -1,24 +1,76 @@
 // Reusable BottomTabs Navigation Component
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Platform, StatusBar } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, useColorScheme, Platform, StatusBar, Image } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import Icon from "react-native-vector-icons/Ionicons";
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useNavigationState, useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUserProfile } from '../../../Apis/ApiSlashing';
 
 // Placeholder component for tab screens (will be replaced by navigation)
 const PlaceholderScreen = ({ route }) => null;
+
+// Profile Tab Icon Component
+const ProfileTabIcon = ({ isActive, userData, size = 32 }) => {
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  console.log('ProfileTabIcon - userData:', userData);
+  console.log('ProfileTabIcon - profileImage:', userData.profileImage);
+
+  if (userData.profileImage) {
+    return (
+      <View style={[styles.profileImageContainer, { 
+        width: size, 
+        height: size, 
+        borderColor: isActive ? "#E53935" : "#CCCCCC",
+        borderWidth: isActive ? 2 : 1,
+      }]}>
+        <Image 
+          source={{ uri: userData.profileImage }} 
+          style={[styles.profileImage, { width: size - 4, height: size - 4 }]} 
+          onError={(error) => console.log('Image loading error:', error)}
+          onLoad={() => console.log('Image loaded successfully')}
+        />
+      </View>
+    );
+  } else {
+    return (
+      <View style={[styles.profileImageContainer, { 
+        width: size, 
+        height: size, 
+        backgroundColor: isActive ? "#E53935" : "#CCCCCC",
+      }]}>
+        <Text style={[styles.profileInitials, { 
+          fontSize: size * 0.4,
+          color: '#FFFFFF',
+        }]}>
+          {getInitials(userData.name)}
+        </Text>
+      </View>
+    );
+  }
+};
 
 const Tab = createBottomTabNavigator();
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 export default function BottomTabs({ 
   tabs = [
-    { name: "Search", screenName: "Search", icon: "search", iconOutline: "search-outline" },
-    { name: "Cart", screenName: "CheckoutPage", icon: "cart", iconOutline: "cart-outline" },
+    { name: "Store", screenName: "StoreScreen", icon: "storefront", iconOutline: "storefront-outline" },
+    { name: "Wish List", screenName: "Wishlist", icon: "heart", iconOutline: "heart-outline" },
     { name: "Home", screenName: "HomeTabs", icon: "home", iconOutline: "home-outline" },
     { name: "History", screenName: "HistoryPage", icon: "time", iconOutline: "time-outline" },
-    { name: "Settings", screenName: "SettingsPage", icon: "settings", iconOutline: "settings-outline" }
+    { name: "Profile", screenName: "ProfilePage", icon: "person", iconOutline: "person-outline", isProfile: true }
   ],
   currentActiveTab = "Home" // Default to Home tab being active, can be passed from parent
 }) {
@@ -27,8 +79,55 @@ export default function BottomTabs({
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState(currentActiveTab);
+  const [userData, setUserData] = useState({ name: '', profileImage: null });
   
-  // Get the actual current screen name from navigation
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        // First try to get data from API
+        const response = await getUserProfile();
+        if (response.success && response.data) {
+          const user = response.data.data || response.data;
+          setUserData({
+            name: user.name || '',
+            profileImage: user.profileImage?.[0] || null,
+          });
+          console.log('User data loaded from API:', { name: user.name, hasImage: !!user.profileImage?.[0] });
+        } else {
+          console.log('API failed, loading from AsyncStorage');
+          const storedData = await AsyncStorage.getItem('jwtToken');
+          if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            if (parsedData.user) {
+              setUserData({
+                name: parsedData.user.name || '',
+                profileImage: parsedData.user.profileImage?.[0] || null,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Error loading user data:', error);
+        // Fallback to AsyncStorage on error
+        try {
+          const storedData = await AsyncStorage.getItem('jwtToken');
+          if (storedData) {
+            const parsedData = JSON.parse(storedData);
+            if (parsedData.user) {
+              setUserData({
+                name: parsedData.user.name || '',
+                profileImage: parsedData.user.profileImage?.[0] || null,
+              });
+            }
+          }
+        } catch (fallbackError) {
+          console.log('Fallback error:', fallbackError);
+        }
+      }
+    };
+    loadUserData();
+  }, []);
+
   const getCurrentScreenName = () => {
     try {
       const state = navigation.getState();
@@ -113,7 +212,7 @@ export default function BottomTabs({
         tabBarActiveTintColor: isDark ? "#FF6B6B" : "#E53935",
         tabBarInactiveTintColor: isDark ? "#CCCCCC" : "#666666",
       })}
-      tabBar={(props) => <CustomTabBar {...props} tabs={tabs} navigation={navigation} activeTab={activeTab} setActiveTab={setActiveTab} />}
+      tabBar={(props) => <CustomTabBar {...props} tabs={tabs} navigation={navigation} activeTab={activeTab} setActiveTab={setActiveTab} userData={userData} />}
     >
       {tabs.map((tab) => (
         <Tab.Screen 
@@ -127,7 +226,7 @@ export default function BottomTabs({
 }
 
 // Custom Tab Bar Component that handles navigation without importing screens
-const CustomTabBar = ({ state, descriptors, navigation: tabNavigation, tabs, navigation, activeTab, setActiveTab }) => {
+const CustomTabBar = ({ state, descriptors, navigation: tabNavigation, tabs, navigation, activeTab, setActiveTab, userData }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
@@ -183,11 +282,19 @@ const CustomTabBar = ({ state, descriptors, navigation: tabNavigation, tabs, nav
             style={styles.tabItem}
             activeOpacity={0.7}
           >
-            <Icon 
-              name={iconName || 'circle'} 
-              size={Math.min(screenWidth * 0.055, 24)} 
-              color={activeColor}
-            />
+            {currentTab?.isProfile ? (
+              <ProfileTabIcon 
+                isActive={isActive} 
+                userData={userData} 
+                size={Math.min(screenWidth * 0.08, 32)} 
+              />
+            ) : (
+              <Icon 
+                name={iconName || 'circle'} 
+                size={Math.min(screenWidth * 0.055, 24)} 
+                color={activeColor}
+              />
+            )}
             <Text
               style={[
                 styles.tabLabel,
@@ -197,7 +304,7 @@ const CustomTabBar = ({ state, descriptors, navigation: tabNavigation, tabs, nav
                 }
               ]}
             >
-              {route.name}
+              {currentTab?.isProfile && userData.name ? userData.name.split(' ')[0] : route.name}
             </Text>
           </TouchableOpacity>
         );
@@ -241,5 +348,18 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'android' ? 'Roboto' : 'System',
     textAlign: 'center',
     marginTop: 4,
+  },
+  profileImageContainer: {
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  profileImage: {
+    borderRadius: 50,
+  },
+  profileInitials: {
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions,
   Platform, StatusBar, useColorScheme, Alert, Animated, Easing,
+  ActivityIndicator, Image,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { getUserProfile } from '../../../Apis/ApiSlashing';
+import ActionGrid from './ActionGrid';
+import PrivacyTermsPage from './PrivacyTermsPage';
 
 // Constants
 const { width: screenWidth } = Dimensions.get('window');
@@ -14,6 +18,8 @@ const getResponsiveSize = (size) => (screenWidth / 375) * size;
 const COLORS = {
   primary: '#e16c61f1',
   primaryDark: '#d77b7bff',
+  primarySculpture: '#cacaca6e',
+  primaryLight: '#cfcfcfad',
   white: '#FFFFFF',
   black: '#1F2937',
   gray: '#6B7280',
@@ -22,56 +28,23 @@ const COLORS = {
   darkBgLight: '#3A3A3A',
 };
 
-// User Data
-const userData = {
-  name: 'Aayush Sharma',
-  email: 'aayush.sharma@gmail.com',
-  phone: '+91 98765 43210',
-  age: '28 Years',
-  bloodGroup: 'B+',
-  avatar: 'A',
-  bio: 'Regular customer at MEDICARE+ pharmacy. Health-conscious individual who prefers quality medicines and reliable healthcare products.',
+// Initial user data structure
+const initialUserData = {
+  name: '',
+  email: '',
+  phone: '',
+  age: null,
+  dob: null,
+  role: '',
+  address: {},
+  profileImage: [],
+  wishlistCount: 0,
+  viewedItemsCount: 0,
+  itemsPurchasedCount: 0,
+  lastLogin: null,
 };
 
-// Menu Items
-const profileMenuItems = [
-  { id: 1, title: 'Personal Information', icon: 'account-outline', nav: 'EditProfile' },
-  { id: 2, title: 'Order History', icon: 'shopping-outline', nav: 'OrderHistory' },
-  { id: 3, title: 'My Prescriptions', icon: 'file-document-outline', nav: 'MyPrescriptions' },
-  { id: 4, title: 'Saved Addresses', icon: 'map-marker-multiple-outline', nav: 'SavedAddresses' },
-  { id: 5, title: 'Loyalty Points', icon: 'star-circle-outline', nav: 'LoyaltyPoints' },
-  { id: 6, title: 'Wishlist', icon: 'heart-outline', nav: 'Wishlist' },
-  { id: 7, title: 'Notifications', icon: 'bell-outline', nav: 'Notifications' },
-  { id: 8, title: 'Settings', icon: 'cog-outline', nav: 'Settings' },
-  { id: 9, title: 'Help & Support', icon: 'help-circle-outline', nav: 'Support' },
-];
 
-// Components
-const MenuItem = ({ item, navigation, isDark }) => (
-  <TouchableOpacity
-    style={[styles.menuItem, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}
-    onPress={() => navigation.navigate(item.nav)}
-    activeOpacity={0.7}
-  >
-    <View style={styles.menuItemLeft}>
-      <View style={[styles.menuIconContainer, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]}>
-        <MaterialCommunityIcons 
-          name={item.icon} 
-          size={getResponsiveSize(22)} 
-          color={isDark ? COLORS.primaryDark : COLORS.primary} 
-        />
-      </View>
-      <Text style={[styles.menuItemText, { color: isDark ? COLORS.white : COLORS.black }]}>
-        {item.title}
-      </Text>
-    </View>
-    <MaterialCommunityIcons 
-      name="chevron-right" 
-      size={getResponsiveSize(20)} 
-      color={isDark ? '#CCCCCC' : '#9CA3AF'} 
-    />
-  </TouchableOpacity>
-);
 
 const ContactItem = ({ icon, text, isDark }) => (
   <View style={styles.contactItem}>
@@ -88,8 +61,112 @@ const ContactItem = ({ icon, text, isDark }) => (
 
 const ProfilePage = () => {
   const navigation = useNavigation();
-  const { logout } = useAuth();
+  const { logout, handleTokenExpiry } = useAuth();
   const isDark = useColorScheme() === 'dark';
+  const [userData, setUserData] = useState(initialUserData);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [personalDetailsExpanded, setPersonalDetailsExpanded] = useState(true);
+
+  // Fetch user profile data
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await getUserProfile();
+      
+      if (response.success && response.data) {
+        setUserData(response.data.data || response.data);
+      } else {
+        // Check for JWT expiry - can be status 401 or 500 with JWT expired message
+        const isJWTExpired = 
+          (response.status === 401 || response.status === 500) && (
+            response.message === 'jwt expired' ||
+            response.message === 'Token expired' ||
+            response.message === 'jwt malformed' ||
+            response.message === 'invalid token' ||
+            (response.message?.toLowerCase?.()?.includes('jwt') && 
+             response.message?.toLowerCase?.()?.includes('expired'))
+          );
+
+        if (isJWTExpired) {
+          console.log('JWT expired in profile API - Auto logout');
+          if (handleTokenExpiry) {
+            await handleTokenExpiry();
+          }
+          return;
+        }
+        
+        // For non-JWT errors, show appropriate message
+        console.log('API Error (not JWT related):', response.message);
+        setError(response.message || 'Failed to load profile');
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      // Check for JWT expiry - can be status 401 or 500 with JWT expired message
+      const isJWTExpired = 
+        (err.response?.status === 401 || err.response?.status === 500) && (
+          err.response?.data?.message === 'jwt expired' ||
+          err.response?.data?.message === 'Token expired' ||
+          err.response?.data?.message === 'jwt malformed' ||
+          err.response?.data?.message === 'invalid token' ||
+          (err.response?.data?.message?.toLowerCase?.()?.includes('jwt') && 
+           err.response?.data?.message?.toLowerCase?.()?.includes('expired'))
+        );
+
+      if (isJWTExpired) {
+        console.log('JWT expired caught in profile API - Auto logout');
+        if (handleTokenExpiry) {
+          await handleTokenExpiry();
+        }
+        return;
+      }
+      
+      // For non-JWT errors, show appropriate message based on status
+      const errorMessage = err.response?.status === 500 
+        ? 'Server error. Please try again later.' 
+        : err.response?.data?.message || 'Network error. Please try again.';
+      
+      console.log('API Error (not JWT related):', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  const formatAge = (age, dob) => {
+    if (age) return `${age} Years`;
+    if (dob) {
+      const birthDate = new Date(dob);
+      const today = new Date();
+      const calculatedAge = Math.floor((today - birthDate) / (365.25 * 24 * 60 * 60 * 1000));
+      return `${calculatedAge} Years`;
+    }
+    return 'Not specified';
+  };
+
+  const formatAddress = (address) => {
+    if (!address || Object.keys(address).length === 0) return 'Not specified';
+    const parts = [];
+    if (address.street) parts.push(address.street);
+    if (address.city) parts.push(address.city);
+    if (address.state) parts.push(address.state);
+    if (address.country) parts.push(address.country);
+    return parts.join(', ') || 'Not specified';
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -158,6 +235,11 @@ const ProfilePage = () => {
     };
 
     const socialIcons = ['instagram', 'twitter', 'github'];
+    const profileImageUrl = userData.profileImage && userData.profileImage.length > 0 
+      ? userData.profileImage[0] 
+      : null;
+    
+    const userBio = `${userData.role || 'User'} at MEDICARE+ pharmacy. Total orders: ${userData.itemsPurchasedCount || 0}`;
   
     return (
       <TouchableOpacity 
@@ -171,12 +253,20 @@ const ProfilePage = () => {
             { 
               transform: [{ scale: profilePicScale }],
               borderRadius: cardExpanded ? 20 : 50,
-              borderColor: isDark ? '#c56161ff' : '#fff' // Green border color
+              borderColor: isDark ? '#c56161ff' : '#fff'
             }
           ]}
         >
           <View style={styles.profilePic}>
-            <Text style={styles.avatarText}>{userData.avatar}</Text>
+            {profileImageUrl ? (
+              <Image 
+                source={{ uri: profileImageUrl }}
+                style={styles.profileImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text style={styles.avatarText}>{getInitials(userData.name)}</Text>
+            )}
           </View>
         </Animated.View>
   
@@ -187,8 +277,8 @@ const ProfilePage = () => {
           ]}
         >
           <View style={styles.content}>
-            <Text style={styles.userName}>{userData.name}</Text>
-            <Text style={styles.userBio}>{userData.bio}</Text>
+            <Text style={styles.userName}>{userData.name || 'User'}</Text>
+            <Text style={styles.userBio}>{userBio}</Text>
           </View>
   
           <View style={styles.bottomContainer}>
@@ -202,9 +292,9 @@ const ProfilePage = () => {
             
             <TouchableOpacity 
               style={styles.contactButton}
-              onPress={() => navigation.navigate('EditProfile')}
+              onPress={() => navigation.navigate('EditProfile', { userData, refreshProfile: fetchUserProfile })}
             >
-              <Text style={styles.contactButtonText}>Contact Me</Text>
+              <Text style={styles.contactButtonText}>Edit Profile</Text>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -212,11 +302,120 @@ const ProfilePage = () => {
     );
   };
 
+  // Skeleton Loading Component
+  const SkeletonLoader = () => (
+    <LinearGradient
+      colors={isDark ? ['#1A1A1A', COLORS.darkBg] : [COLORS.white, '#F8F9FA']}
+      style={styles.container}
+    >
+      <StatusBar 
+        backgroundColor={isDark ? '#1A1A1A' : COLORS.white} 
+        barStyle={isDark ? 'light-content' : 'dark-content'} 
+      />
+      
+      {/* Header Skeleton */}
+      <View style={[styles.header, { borderBottomColor: isDark ? COLORS.darkBgLight : '#E5E7EB' }]}>
+        <View style={[styles.skeletonButton, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+        <View style={[styles.skeletonHeaderTitle, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+        <View style={[styles.skeletonButton, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+      </View>
+
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Profile Card Skeleton */}
+        <View style={[styles.cardContainer, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
+          <View style={[styles.skeletonProfilePic, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.primarySculpture }]} />
+          <View style={[styles.skeletonContentContainer, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.primarySculpture }]}>
+            <View style={styles.skeletonContent}>
+              <View style={[styles.skeletonUserName, { backgroundColor: 'rgba(255, 255, 255, 0.15)' }]} />
+              <View style={[styles.skeletonUserBio, { backgroundColor: 'rgba(63, 60, 60, 0.46)' }]} />
+            </View>
+            <View style={styles.skeletonBottomContainer}>
+              <View style={styles.skeletonSocialLinks}>
+                {[1,2,3].map((i) => (
+                  <View key={i} style={[styles.skeletonSocialIcon, { backgroundColor: 'rgba(109, 105, 105, 0.3)' }]} />
+                ))}
+              </View>
+              <View style={[styles.skeletonContactButton, { backgroundColor: 'rgba(113, 104, 104, 0.4)' }]} />
+            </View>
+          </View>
+        </View>
+
+        {/* Personal Details Skeleton */}
+        <View style={[styles.section, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
+          <View style={[styles.skeletonSectionTitle, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+          {[1,2,3,4,5].map((i) => (
+            <View key={i} style={styles.skeletonContactItem}>
+              <View style={[styles.skeletonIcon, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+              <View style={[styles.skeletonContactText, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+            </View>
+          ))}
+        </View>
+
+        {/* Menu Items Skeleton */}
+        <View style={styles.menuSection}>
+          {[1,2,3,4,5,6,7,8,9].map((i) => (
+            <View key={i} style={[styles.menuItem, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.skeletonMenuIcon, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+                <View style={[styles.skeletonMenuText, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+              </View>
+              <View style={[styles.skeletonChevron, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+            </View>
+          ))}
+        </View>
+
+        {/* Logout Button Skeleton */}
+        <View style={[styles.skeletonLogoutButton, { backgroundColor: isDark ? COLORS.darkBgLight : COLORS.lightGray }]} />
+      </ScrollView>
+    </LinearGradient>
+  );
+
+  // Loading screen
+  if (loading) {
+    return <SkeletonLoader />;
+  }
+
+  // Error screen
+  if (error) {
+    return (
+      <LinearGradient
+        colors={isDark ? ['#1A1A1A', COLORS.darkBg] : [COLORS.white, '#F8F9FA']}
+        style={[styles.container, styles.centerItems]}
+      >
+        <MaterialCommunityIcons 
+          name="alert-circle-outline" 
+          size={getResponsiveSize(64)} 
+          color={isDark ? '#EF4444' : '#DC2626'} 
+        />
+        <Text style={[styles.errorTitle, { color: isDark ? COLORS.white : COLORS.black }]}>
+          Failed to Load Profile
+        </Text>
+        <Text style={[styles.errorText, { color: isDark ? '#CCCCCC' : '#6B7280' }]}>
+          {error}
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.circularLogoutButton
+          ]}
+          onPress={handleLogout}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons 
+            name="logout" 
+            size={getResponsiveSize(22)} 
+            color={COLORS.white} 
+          />
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
+
   const contactItems = [
-    { icon: 'email-outline', text: userData.email },
-    { icon: 'phone-outline', text: userData.phone },
-    { icon: 'water', text: `Blood Group: ${userData.bloodGroup}` },
-    { icon: 'cake-variant', text: `Age: ${userData.age}` },
+    { icon: 'email-outline', text: userData.email || 'Not specified' },
+    { icon: 'phone-outline', text: userData.phone || 'Not specified' },
+    { icon: 'map-marker-outline', text: formatAddress(userData.address) },
+    { icon: 'cake-variant', text: formatAge(userData.age, userData.dob) },
+    { icon: 'crown-outline', text: `Role: ${userData.role || 'User'}` },
   ];
 
   return (
@@ -238,31 +437,50 @@ const ProfilePage = () => {
           <MaterialCommunityIcons name="arrow-left" size={getResponsiveSize(24)} color={isDark ? COLORS.white : COLORS.black} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: isDark ? COLORS.white : COLORS.black }]}>Profile</Text>
-        <TouchableOpacity 
+        {/* <TouchableOpacity 
           onPress={() => navigation.navigate('EditProfile')}
           style={[styles.headerButton, { backgroundColor: isDark ? COLORS.primaryDark : COLORS.primary }]}
         >
           <MaterialCommunityIcons name="pencil" size={getResponsiveSize(18)} color={COLORS.white} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <ProfileCard userData={userData} isDark={isDark} />
-
-        {/* Contact & Health Information */}
+        {/* ActionGrid  */}
+        <ActionGrid isDark={isDark} navigation={navigation} />
+        {/* Personal Details - Collapsible */}
         <View style={[styles.section, { backgroundColor: isDark ? COLORS.darkBg : COLORS.white }]}>
-          <Text style={[styles.sectionTitle, { color: isDark ? COLORS.white : COLORS.black }]}>Personal Details</Text>
-          {contactItems.map((item, index) => (
-            <ContactItem key={index} icon={item.icon} text={item.text} isDark={isDark} />
-          ))}
+          <TouchableOpacity 
+            style={styles.sectionHeader}
+            onPress={() => setPersonalDetailsExpanded(!personalDetailsExpanded)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.sectionTitle, { color: isDark ? COLORS.white : COLORS.black, marginBottom: 0 }]}>
+              Personal Details
+            </Text>
+            <MaterialCommunityIcons 
+              name={personalDetailsExpanded ? "chevron-up" : "chevron-down"} 
+              size={getResponsiveSize(24)} 
+              color={isDark ? COLORS.white : COLORS.black}
+              style={[styles.chevronIcon, { 
+                transform: [{ rotate: personalDetailsExpanded ? '0deg' : '0deg' }] 
+              }]}
+            />
+          </TouchableOpacity>
+          
+          {personalDetailsExpanded && (
+            <View style={styles.expandableContent}>
+              {contactItems.map((item, index) => (
+                <ContactItem key={index} icon={item.icon} text={item.text} isDark={isDark} />
+              ))}
+            </View>
+          )}
         </View>
+        {/* <Text>Recently viewed products</Text> */}
+        {/* Privacy & Terms Page */}
+        <PrivacyTermsPage isDark={isDark} />
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
-          {profileMenuItems.map((item) => (
-            <MenuItem key={item.id} item={item} navigation={navigation} isDark={isDark} />
-          ))}
-        </View>
 
         {/* Circular Logout Button */}
         <TouchableOpacity
@@ -313,7 +531,7 @@ const styles = StyleSheet.create({
     borderRadius: getResponsiveSize(20),
     ...StyleSheet.flatten([{ alignItems: 'center', justifyContent: 'center' }])
   },
-  headerTitle: { fontSize: getResponsiveSize(20), fontWeight: 'bold' },
+  headerTitle: { fontSize: getResponsiveSize(20), fontWeight: 'bold', flex: 1, textAlign: 'center' },
 
   // Scroll View
   scrollView: { flex: 1 },
@@ -344,7 +562,13 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 50,
     backgroundColor: COLORS.primaryDark,
+    overflow: 'hidden',
     ...StyleSheet.flatten([{ alignItems: 'center', justifyContent: 'center' }])
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 50,
   },
   avatarText: { color: COLORS.white, fontSize: getResponsiveSize(32), fontWeight: 'bold' },
   contentContainer: {
@@ -376,6 +600,19 @@ const styles = StyleSheet.create({
     ...StyleSheet.flatten([{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 5 }])
   },
   sectionTitle: { fontSize: getResponsiveSize(18), fontWeight: 'bold', marginBottom: 15 },
+  sectionHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    paddingVertical: 5,
+  },
+  chevronIcon: {
+    marginLeft: 10,
+  },
+  expandableContent: {
+    marginTop: 15,
+    overflow: 'hidden',
+  },
   contactItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   contactText: { fontSize: getResponsiveSize(14), marginLeft: 15 },
 
@@ -417,8 +654,158 @@ const styles = StyleSheet.create({
     }])
   },
 
+  // Loading and Error States
+  loadingText: { 
+    fontSize: getResponsiveSize(16), 
+    marginTop: 20, 
+    textAlign: 'center' 
+  },
+  errorTitle: { 
+    fontSize: getResponsiveSize(20), 
+    fontWeight: 'bold', 
+    marginTop: 20, 
+    textAlign: 'center' 
+  },
+  errorText: { 
+    fontSize: getResponsiveSize(14), 
+    marginTop: 10, 
+    textAlign: 'center', 
+    paddingHorizontal: 20 
+  },
+  retryButton: {
+    marginTop: 20,
+    paddingHorizontal: getResponsiveSize(30),
+    paddingVertical: getResponsiveSize(12),
+    borderRadius: getResponsiveSize(25),
+  },
+  retryButtonText: {
+    color: COLORS.white,
+    fontSize: getResponsiveSize(16),
+    fontWeight: 'bold',
+  },
+
   // Version
   versionText: { textAlign: 'center', fontSize: getResponsiveSize(12), marginBottom: 10 },
+
+  // Skeleton Styles
+  skeletonButton: {
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
+    borderRadius: getResponsiveSize(20),
+    opacity: 0.7,
+  },
+  skeletonHeaderTitle: {
+    width: getResponsiveSize(100),
+    height: getResponsiveSize(20),
+    borderRadius: 6,
+    opacity: 0.7,
+  },
+  skeletonProfilePic: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: getResponsiveSize(100),
+    height: getResponsiveSize(100),
+    borderRadius: 50,
+    opacity: 0.7,
+  },
+  skeletonContentContainer: {
+    position: 'absolute',
+    left: 3,
+    right: 3,
+    bottom: 3,
+    height: getResponsiveSize(160),
+    borderRadius: 29,
+    borderTopLeftRadius: 70,
+    borderTopRightRadius: 30,
+    padding: getResponsiveSize(20),
+  },
+  skeletonContent: {
+    marginBottom: getResponsiveSize(20),
+    marginTop: 10,
+  },
+  skeletonUserName: {
+    width: getResponsiveSize(150),
+    height: getResponsiveSize(25),
+    borderRadius: 6,
+    marginBottom: getResponsiveSize(8),
+  },
+  skeletonUserBio: {
+    width: getResponsiveSize(200),
+    height: getResponsiveSize(14),
+    borderRadius: 4,
+  },
+  skeletonBottomContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  skeletonSocialLinks: {
+    flexDirection: 'row',
+    gap: getResponsiveSize(15),
+  },
+  skeletonSocialIcon: {
+    width: getResponsiveSize(30),
+    height: getResponsiveSize(30),
+    borderRadius: 15,
+  },
+  skeletonContactButton: {
+    width: getResponsiveSize(80),
+    height: getResponsiveSize(24),
+    borderRadius: 12,
+  },
+  skeletonSectionTitle: {
+    width: getResponsiveSize(120),
+    height: getResponsiveSize(18),
+    borderRadius: 6,
+    marginBottom: 15,
+    opacity: 0.7,
+  },
+  skeletonContactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  skeletonIcon: {
+    width: getResponsiveSize(20),
+    height: getResponsiveSize(20),
+    borderRadius: 10,
+    marginRight: 15,
+    opacity: 0.7,
+  },
+  skeletonContactText: {
+    width: getResponsiveSize(180),
+    height: getResponsiveSize(14),
+    borderRadius: 4,
+    opacity: 0.7,
+  },
+  skeletonMenuIcon: {
+    width: getResponsiveSize(40),
+    height: getResponsiveSize(40),
+    borderRadius: getResponsiveSize(20),
+    marginRight: 15,
+    opacity: 0.7,
+  },
+  skeletonMenuText: {
+    flex: 1,
+    height: getResponsiveSize(16),
+    borderRadius: 4,
+    opacity: 0.7,
+  },
+  skeletonChevron: {
+    width: getResponsiveSize(20),
+    height: getResponsiveSize(20),
+    borderRadius: 4,
+    opacity: 0.7,
+  },
+  skeletonLogoutButton: {
+    width: getResponsiveSize(50),
+    height: getResponsiveSize(50),
+    borderRadius: getResponsiveSize(25),
+    marginHorizontal: screenWidth * 0.8,
+    marginBottom: 20,
+    opacity: 0.7,
+  },
 });
 
 export default ProfilePage;

@@ -128,47 +128,49 @@ const SignUpScreen = ({ navigation }) => {
   }, []);
 
 
-  const handleSubmit = async () => {
-    setError("");
+const handleSubmit = async () => {
+  setError("");
 
-    if (!fullName || !email || !phoneNumber || !password) {
-      setError("All fields are required");
-      return;
+  if (!fullName || !email || !phoneNumber || !password) {
+    setError("All fields are required");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const payload = {
+      name: fullName,
+      email: email,
+      password: password,
+      phone: phoneNumber,
+    };
+
+    const result = await signupUser(payload);
+
+    console.log("Signup result:", result);
+
+    if (result.success) {
+      Alert.alert(
+        "Success",
+        "Account created successfully! Please sign in.",
+        [
+          {
+            text: "OK",
+            onPress: () => navigation.navigate("SignIn")
+          }
+        ]
+      );
+    } else {
+      setError(result.message || "Signup failed. Please try again.");
     }
-
-    try {
-      setLoading(true);
-      
-      const result = await signupUser({
-        name: fullName,
-        email: email,
-        password: password,
-        phone: phoneNumber
-      });
-
-      console.log("Signup result:", result);
-
-      if (result.success) {
-        Alert.alert(
-          "Success",
-          "Account created successfully! Please sign in.",
-          [
-            {
-              text: "OK",
-              onPress: () => navigation.navigate("SignIn")
-            }
-          ]
-        );
-      } else {
-        setError(result.message || "Signup failed. Please try again.");
-      }
-    } catch (err) {
-      console.error("Signup error:", err);
-      setError("An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (err) {
+    console.error("Signup error:", err);
+    setError("An unexpected error occurred. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>

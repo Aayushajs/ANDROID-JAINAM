@@ -9,6 +9,7 @@ import { CartProvider } from './components/User/pages/CartContext.js';
 
 import SignInScreen from './components/User/Authntiocation/SignInScreen.jsx';
 import SignUpScreen from './components/User/Authntiocation/SignUpScreen.jsx';
+import EditProfileScreen from './components/User/pages/EditProfileScreen.jsx';
 import StartPage from './components/StartPage.jsx';
 import WelcomePage from './components/welcomePage.jsx';
 import HomePage from './components/User/Home/Home.jsx';
@@ -30,6 +31,7 @@ const AppNavigator = () => {
         <>
           <Stack.Screen name="HomeTabs" component={HomePage} options={{ headerShown: false }} />
           <Stack.Screen name="ProfilePage" component={ProfilePage} options={{ headerShown: false }} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Search" component={SearchScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ProductDetail" component={ProductDetail} options={{ headerShown: false }} />
           <Stack.Screen name="CheckoutPage" component={CheckoutPage} options={{ headerShown: false }} />
@@ -68,9 +70,8 @@ export default function App() {
     checkUpdates();
   }, []);
 
-  // Set status bar text color opposite to app background
   const colorScheme = useColorScheme();
-  // If app bg is light, status bar text is dark; if app bg is dark, status bar text is light
+
   const barStyle = colorScheme === 'dark' ? 'light-content' : 'dark-content';
 
     return (
