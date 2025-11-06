@@ -95,7 +95,7 @@ export const forgotPassword = async ({ email }) => {
             { email },
             { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
         )
-        console.log("response via forgotPassword : ", res)
+        // console.log("response via forgotPassword : ", res)
 
         return handleResponse(res);
     } catch (error) {
@@ -125,7 +125,7 @@ export const resetPassword = async ({ password }) => {
             { password },
             { withCredentials: true, headers: { 'Content-Type': 'application/json' } }
         )
-        console.log("response via resetPassword : ", res)
+        // console.log("response via resetPassword : ", res)
 
         return handleResponse(res);
     } catch (error) {
